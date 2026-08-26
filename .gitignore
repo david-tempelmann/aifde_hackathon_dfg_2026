@@ -216,3 +216,34 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Databricks Asset Bundles
+#   Local bundle state, sync snapshots, and terraform artifacts created by
+#   `databricks bundle deploy/validate`. Never commit these.
+.databricks/
+**/.databricks/
+bundle.tf.json
+*.tfstate
+*.tfstate.*
+
+# Databricks CLI auth / config
+.databrickscfg
+.databricks-login.json
+
+# Databricks Connect / local Spark
+metastore_db/
+derby.log
+spark-warehouse/
+
+# Isaac (local tool state)
+.isaac/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
