@@ -1,0 +1,22 @@
+# Example job. Copy this file to add more jobs (one file per job keeps things modular).
+resources:
+  jobs:
+    example_job:
+      name: ${bundle.name}-example_job
+      tasks:
+        - task_key: example_notebook
+          notebook_task:
+            notebook_path: ../notebooks/example.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+          # Attach the serverless environment that installs the go_opps wheel.
+          environment_key: default
+      # Serverless environment(s) that tasks reference by key. The go_opps wheel
+      # (built by the `go_opps` artifact) is installed as a dependency.
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl

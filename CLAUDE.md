@@ -1,0 +1,4 @@
+- This project is part of a hackathon. The task is defined in ./docs/task.md
+- The project will be built on Databricks and use Databricks features exclusively
+- We'll be using the https://fevm-ai-fde-hackathon.cloud.databricks.com workspace for deploying and testing the solution
+- You can use the ssh connect feature of the databricks cli to connect to the workspace, check for deployed resources or to debug - ask the use before doing so

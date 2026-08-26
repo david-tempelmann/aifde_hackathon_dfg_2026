@@ -1,0 +1,33 @@
+# Databricks Asset Bundle definition for the GO Project hackathon.
+# Docs: https://docs.databricks.com/dev-tools/bundles/index.html
+bundle:
+  name: aifde_hackathon_dfg_2026
+
+# Modular resource definitions (jobs, pipelines, etc.) live under resources/.
+include:
+  - resources/*.yml
+
+# Build the go_opps package into a wheel that jobs can attach as a library.
+artifacts:
+  go_opps:
+    type: whl
+    path: .
+    build: uv build --wheel
+
+# Bundle-wide variables. Override per-target under `targets.<name>.variables`.
+variables:
+  catalog:
+    description: Unity Catalog used by the bundle.
+    default: ai_fde_hackathon_catalog
+  schema:
+    description: Schema (within `catalog`) used by the bundle.
+    default: brickhearts
+
+targets:
+  dev:
+    # Default target. `development` mode prefixes deployed resources with the
+    # user's name and pauses schedules, so multiple people can deploy safely.
+    mode: development
+    default: true
+    workspace:
+      host: https://fevm-ai-fde-hackathon.cloud.databricks.com
