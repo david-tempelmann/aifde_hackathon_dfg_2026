@@ -275,13 +275,20 @@ WHERE length(e.alias_norm) > 0
 # Dimension: distinct resolved places, enriched with the gazetteer hierarchy.
 spark.sql(f"""
 CREATE OR REPLACE TABLE {catalog}.{schema}.silver_places AS
-WITH d AS (SELECT DISTINCT place_id, canonical_name, level, state FROM resolved_places)
-SELECT d.place_id,
-       coalesce(g.canonical_name, d.canonical_name) AS canonical_name,
-       coalesce(g.level, d.level)                   AS level,
-       coalesce(g.usps, d.state)                    AS state,
-       g.parent_geoid                               AS parent_geoid
-FROM d LEFT JOIN {catalog}.{schema}.silver_ref_gazetteer g ON g.geoid = d.place_id
+WITH d AS (SELECT DISTINCT place_id, canonical_name, level, state FROM resolved_places),
+enriched AS (
+  SELECT d.place_id,
+         coalesce(g.canonical_name, d.canonical_name) AS canonical_name,
+         coalesce(g.level, d.level)                   AS level,
+         coalesce(g.usps, d.state)                    AS state,
+         g.parent_geoid                               AS parent_geoid
+  FROM d LEFT JOIN {catalog}.{schema}.silver_ref_gazetteer g ON g.geoid = d.place_id
+)
+-- one row per place_id (the pre-join DISTINCT can leave dupes that the gazetteer
+-- join then normalizes to identical rows, e.g. 'us')
+SELECT place_id, max(canonical_name) AS canonical_name, max(level) AS level,
+       max(state) AS state, max(parent_geoid) AS parent_geoid
+FROM enriched GROUP BY place_id
 """)
 
 # Bridge (dedup a place mentioned twice for one signal; keep highest confidence).

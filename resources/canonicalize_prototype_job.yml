@@ -1,0 +1,26 @@
+# PROTOTYPE job — LLM batch canonicalization of orgs/policies (notebooks/silver/05).
+# Runs alongside the deterministic stage-04 output; writes only NEW `*_llm` tables
+# (silver_organizations_llm, silver_policies_llm, + _map) so nothing existing is
+# overwritten. Not part of the silver_pipeline job. Remove once evaluated.
+resources:
+  jobs:
+    canonicalize_prototype:
+      name: ${bundle.name}-canonicalize_prototype
+      parameters:
+        - name: model
+          default: ""   # empty = go_opps.canonicalize.DEFAULT_CANON_MODEL (sonnet)
+      tasks:
+        - task_key: canonicalize
+          notebook_task:
+            notebook_path: ../notebooks/silver/05_canonicalize_llm.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              model: "{{job.parameters.model}}"
+          environment_key: default
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl
