@@ -1,0 +1,57 @@
+# Silver-layer pipeline: raw_issues -> documents -> chunks -> extract -> signals.
+# Full reprocess each run (solution-design §6). Serverless; installs the go_opps wheel.
+resources:
+  jobs:
+    silver_pipeline:
+      name: ${bundle.name}-silver_pipeline
+      # Job-level knobs. Override at run time, e.g.
+      #   databricks bundle run silver_pipeline --params sample_per_type=4
+      parameters:
+        - name: sample_per_type
+          default: "0"   # 0 = full corpus; N = N docs per source_type (smoke test)
+      tasks:
+        - task_key: documents
+          notebook_task:
+            notebook_path: ../notebooks/silver/01_documents.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+          environment_key: default
+
+        - task_key: chunks
+          depends_on:
+            - task_key: documents
+          notebook_task:
+            notebook_path: ../notebooks/silver/02_chunks.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+          environment_key: default
+
+        - task_key: extract
+          depends_on:
+            - task_key: chunks
+          notebook_task:
+            notebook_path: ../notebooks/silver/03_extract.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              sample_per_type: "{{job.parameters.sample_per_type}}"
+          environment_key: default
+
+        - task_key: signals
+          depends_on:
+            - task_key: extract
+          notebook_task:
+            notebook_path: ../notebooks/silver/04_signals.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl
