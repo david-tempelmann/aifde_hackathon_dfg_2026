@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.env
+
+# Node
+frontend/node_modules/
+npm-debug.log*
+
+# Keep the built frontend (frontend/dist) — it is served in production.
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
