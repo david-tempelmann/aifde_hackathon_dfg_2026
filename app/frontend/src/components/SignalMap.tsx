@@ -47,7 +47,7 @@ function pinIcon(direction: string | null, selected: boolean): L.DivIcon {
   const ring = selected ? "box-shadow:0 0 0 4px rgba(7,115,167,0.35);" : "";
   return L.divIcon({
     className: "",
-    html: `<span style="display:block;width:${size}px;height:${size}px;border-radius:9999px;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);${ring}"></span>`,
+    html: `<span style="display:block;width:${size}px;height:${size}px;border-radius:9999px;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35), 0 0 10px ${color}99;${ring}"></span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
@@ -57,7 +57,7 @@ function clusterIcon(count: number, color: string): L.DivIcon {
   const size = 40;
   return L.divIcon({
     className: "",
-    html: `<span style="display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:9999px;background:${color};color:#fff;font-weight:700;font-size:15px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer;">${count}</span>`,
+    html: `<span style="display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:9999px;background:${color};color:#fff;font-weight:700;font-size:15px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35), 0 0 16px ${color}aa;cursor:pointer;">${count}</span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });

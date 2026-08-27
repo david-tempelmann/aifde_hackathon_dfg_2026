@@ -1,10 +1,10 @@
 import { CalendarDays, MapPin, TrendingUp } from "lucide-react";
 import type { Signal } from "../types";
 import { confidenceColor, directionStyle, formatDate } from "../lib";
+import { issueIcon } from "../issueMeta";
 
-// Concise, scannable representation of a signal used in both the list and the
-// map's side column. Clicking it opens the full detail drawer — no full detail
-// is shown inline (that lives only in the drawer).
+// Compact-width but taller signal card used in the state swim lanes. Clicking it
+// opens the full detail drawer.
 export default function SignalRow({
   signal,
   selected = false,
@@ -15,8 +15,10 @@ export default function SignalRow({
   onSelect: (id: string) => void;
 }) {
   const dir = directionStyle(signal.relevance_direction);
+  const IssueIcon = issueIcon(signal.issue_label);
   const date = signal.event_date ?? signal.published_date;
   const conf = signal.confidence;
+  const score = signal.priority_score != null ? Math.round(signal.priority_score * 100) : null;
   const place =
     signal.place_name && signal.state && signal.place_name !== signal.state
       ? `${signal.place_name}, ${signal.state}`
@@ -26,30 +28,31 @@ export default function SignalRow({
     <button
       id={`signal-${signal.signal_id}`}
       onClick={() => onSelect(signal.signal_id)}
-      className={`w-full rounded-xl border border-l-4 bg-white p-3.5 text-left shadow-sm transition hover:shadow-md ${dir.accent} ${
+      className={`w-full rounded-xl border border-l-4 bg-white px-4 py-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${dir.accent} ${
         selected ? "border-brand-300 ring-2 ring-brand-400" : "border-black/10"
       }`}
     >
-      <div className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+      <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px]">
         {signal.issue_label && (
-          <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-700">
+          <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-700">
+            <IssueIcon className="h-3 w-3" />
             {signal.issue_label}
           </span>
         )}
-        {signal.priority_score != null && (
+        {score != null && (
           <span
             className="ml-auto inline-flex items-center gap-1 rounded-full bg-gold-100 px-2 py-0.5 font-semibold text-navy"
             title="Priority score (impact, urgency, locality, evidence)"
           >
             <TrendingUp className="h-3 w-3" />
-            {Math.round(signal.priority_score * 100)}
+            {score}
           </span>
         )}
       </div>
 
-      <p className="line-clamp-2 text-sm font-semibold leading-snug text-navy">{signal.summary}</p>
+      <p className="line-clamp-3 text-[13px] font-semibold leading-snug text-navy">{signal.summary}</p>
 
-      <div className="mt-2 flex items-center gap-3 text-[11px] text-navy-400">
+      <div className="mt-3 flex items-center gap-3 text-[10px] text-navy-400">
         {place && (
           <span className="inline-flex items-center gap-1">
             <MapPin className="h-3 w-3" />

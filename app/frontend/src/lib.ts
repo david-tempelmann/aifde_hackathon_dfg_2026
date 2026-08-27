@@ -64,6 +64,26 @@ export function confidenceLabel(c: number | null): string {
   return "Low";
 }
 
+export type PriorityBucket = "high" | "medium" | "low";
+
+// Priority score (0..1) → coarse bucket. Thresholds are tunable.
+export function priorityBucket(score: number | null | undefined): PriorityBucket {
+  const v = score ?? 0;
+  if (v >= 0.7) return "high";
+  if (v >= 0.5) return "medium";
+  return "low";
+}
+
+// Presentation for each priority bucket (a warm "heat" ramp).
+export const PRIORITY_META: Record<
+  PriorityBucket,
+  { label: string; short: string; chipBg: string; text: string; dot: string }
+> = {
+  high: { label: "High priority", short: "High", chipBg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
+  medium: { label: "Medium priority", short: "Medium", chipBg: "bg-gold-100", text: "text-amber-700", dot: "bg-gold-400" },
+  low: { label: "Low priority", short: "Low", chipBg: "bg-slate-100", text: "text-slate-500", dot: "bg-slate-400" },
+};
+
 export type ConfidenceBucket = "high" | "medium" | "low";
 
 // Coarse confidence band used by the bucket filter (thresholds match

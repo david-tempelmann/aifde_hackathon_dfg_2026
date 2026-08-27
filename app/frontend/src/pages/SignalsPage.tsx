@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Inbox, Map as MapIcon, Check, ArrowLeft } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { Inbox, Map as MapIcon, Check, ArrowLeft } from "lucide-react";
 import { fetchSignals } from "../api";
 import type { Signal } from "../types";
 import { buildStateColors, resolveCoords, STATE_CODE_TO_NAME } from "../geo";
@@ -16,16 +17,27 @@ import SignalDrawer from "../components/SignalDrawer";
 const DIRECTIONS = ["opportunity", "risk", "watch"];
 // Swim-lane order for the card board.
 const LANE_KEYS = ["opportunity", "risk", "watch"] as const;
+const LANE_CAP = 3; // cards per swim lane before "+N more"
 
 export default function SignalsPage() {
+  const [searchParams] = useSearchParams();
   const [all, setAll] = useState<Signal[]>([]);
-  const [filters, setFilters] = useState<SignalFilters>(EMPTY_FILTERS);
+  // Initialise filters from ?state=/?issue= (e.g. arriving from an Overview cell).
+  const [filters, setFilters] = useState<SignalFilters>(() => {
+    const init = { ...EMPTY_FILTERS };
+    const st = searchParams.get("state");
+    const issue = searchParams.get("issue");
+    if (st) init.states = [st];
+    if (issue) init.issues = [issue];
+    return init;
+  });
   const [sort, setSort] = useState("priority");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [expandedLanes, setExpandedLanes] = useState<Set<string>>(new Set());
 
   // Fetch the whole (small) set once; all filtering/sorting is client-side so
   // multi-select tags and confidence buckets stay instant.
@@ -95,6 +107,11 @@ export default function SignalsPage() {
     }
     return arr;
   }, [filtered, sort]);
+
+  // Reset "show more" state whenever the query changes.
+  useEffect(() => {
+    setExpandedLanes(new Set());
+  }, [filters, sort]);
 
   // Drop stale selection/detail when no longer in the result set.
   useEffect(() => {
@@ -231,6 +248,15 @@ export default function SignalsPage() {
                   <ArrowLeft className="h-3.5 w-3.5" /> Go back to full view
                 </button>
               )}
+              {/* Legend */}
+              <div className="absolute bottom-3 left-3 z-[1000] rounded-lg bg-white/90 px-2.5 py-2 text-[10px] shadow-sm ring-1 ring-black/5 backdrop-blur">
+                <div className="mb-1 font-semibold uppercase tracking-wide text-navy-400">Signals</div>
+                <div className="flex flex-col gap-0.5 text-navy-500">
+                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Opportunity</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500" /> Risk</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400" /> Watch</span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -241,8 +267,15 @@ export default function SignalsPage() {
           )}
 
           {loading ? (
-            <div className="flex items-center justify-center py-20 text-navy-400">
-              <Loader2 className="h-6 w-6 animate-spin" />
+            <div className="grid gap-3 md:grid-cols-3">
+              {[0, 1, 2].map((col) => (
+                <div key={col} className="space-y-2">
+                  <div className="h-4 w-24 animate-pulse rounded bg-black/5" />
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-28 animate-pulse rounded-xl bg-black/5" />
+                  ))}
+                </div>
+              ))}
             </div>
           ) : signals.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-20 text-navy-400">
@@ -298,6 +331,9 @@ export default function SignalsPage() {
                       {LANE_KEYS.map((key) => {
                         const ls = directionStyle(key);
                         const laneCards = group.filter((s) => (s.relevance_direction ?? "watch") === key);
+                        const laneKey = `${code}|${key}`;
+                        const laneExpanded = expandedLanes.has(laneKey);
+                        const shown = laneExpanded ? laneCards : laneCards.slice(0, LANE_CAP);
                         return (
                           <div key={key} className="space-y-2">
                             <div className="flex items-center gap-1.5 border-b border-black/5 pb-1 text-xs font-semibold text-navy-500">
@@ -310,14 +346,26 @@ export default function SignalsPage() {
                                 None
                               </p>
                             ) : (
-                              laneCards.map((s) => (
-                                <SignalRow
-                                  key={s.signal_id}
-                                  signal={s}
-                                  selected={s.signal_id === selectedId}
-                                  onSelect={openDetail}
-                                />
-                              ))
+                              <>
+                                {shown.map((s) => (
+                                  <SignalRow
+                                    key={s.signal_id}
+                                    signal={s}
+                                    selected={s.signal_id === selectedId}
+                                    onSelect={openDetail}
+                                  />
+                                ))}
+                                {laneCards.length > LANE_CAP && !laneExpanded && (
+                                  <button
+                                    onClick={() =>
+                                      setExpandedLanes((prev) => new Set(prev).add(laneKey))
+                                    }
+                                    className="w-full rounded-lg border border-dashed border-navy/20 py-1.5 text-xs font-semibold text-brand-600 transition hover:bg-brand-50"
+                                  >
+                                    +{laneCards.length - LANE_CAP} more
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         );

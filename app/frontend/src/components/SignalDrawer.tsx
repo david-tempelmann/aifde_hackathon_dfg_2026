@@ -10,6 +10,7 @@ import {
   humanizeType,
 } from "../lib";
 import OutreachStudio from "./OutreachStudio";
+import { issueIcon } from "../issueMeta";
 
 function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   if (value == null || value === "") return null;
@@ -41,6 +42,7 @@ export default function SignalDrawer({
   if (!signal) return null;
 
   const dir = directionStyle(signal.relevance_direction);
+  const IssueIcon = issueIcon(signal.issue_label);
   const date = signal.event_date ?? signal.published_date;
   const conf = signal.confidence;
   const link = citationLink(signal.url, signal.quote);
@@ -62,7 +64,7 @@ export default function SignalDrawer({
         role="dialog"
         aria-modal="true"
         aria-label={signal.summary ?? "Signal detail"}
-        className="absolute right-0 top-0 flex h-full w-full max-w-lg flex-col bg-canvas shadow-2xl"
+        className="absolute right-0 top-0 flex h-full w-full flex-col bg-canvas shadow-2xl md:w-1/2"
       >
         {/* Header */}
         <div className={`flex items-start gap-3 border-b border-black/5 border-l-4 ${dir.accent} bg-white px-5 py-4`}>
@@ -126,8 +128,18 @@ export default function SignalDrawer({
           )}
 
           {/* Metadata */}
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-            <Meta label="Issue" value={signal.issue_label} />
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+            <Meta
+              label="Issue"
+              value={
+                signal.issue_label ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <IssueIcon className="h-3.5 w-3.5 text-brand-600" />
+                    {signal.issue_label}
+                  </span>
+                ) : null
+              }
+            />
             <Meta label="Signal type" value={humanizeType(signal.signal_type)} />
             <Meta label="Place" value={place} />
             <Meta label="Event date" value={formatDate(date)} />

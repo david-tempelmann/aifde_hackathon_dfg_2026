@@ -136,7 +136,7 @@ select issue_label as issue, state,
        sum(case when relevance_direction = 'watch' then 1 else 0 end)::int as watch,
        max(event_date) as latest
 from {_S}.opportunity_cards
-where state in ('NY','CA','VA')
+where state is not null and issue_label is not null
 group by issue_label, state
 """
 

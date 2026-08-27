@@ -33,6 +33,10 @@ export function fetchOverview(): Promise<OverviewResponse> {
   return getJSON<OverviewResponse>("/api/overview");
 }
 
+export function fetchStats(): Promise<{ total: number; since_yesterday: number | null }> {
+  return getJSON<{ total: number; since_yesterday: number | null }>("/api/stats");
+}
+
 export function fetchDraftOptions(): Promise<{ variants: DraftOption[]; defaults: string[] }> {
   return getJSON<{ variants: DraftOption[]; defaults: string[] }>("/api/draft/options");
 }

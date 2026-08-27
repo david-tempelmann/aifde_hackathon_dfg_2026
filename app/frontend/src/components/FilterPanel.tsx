@@ -1,6 +1,8 @@
-import { Search, X } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Search, X } from "lucide-react";
 import type { ConfidenceBucket } from "../lib";
 import { directionStyle, humanizeType } from "../lib";
+import { issueIcon } from "../issueMeta";
 
 export type FilterFacet = "states" | "directions" | "issues" | "types" | "confidence";
 
@@ -61,11 +63,34 @@ function Tag({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  count = 0,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="space-y-1.5">
-      <div className="text-xs font-semibold uppercase tracking-wide text-navy-400">{title}</div>
-      {children}
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between py-1 text-left"
+      >
+        <span className="text-xs font-semibold uppercase tracking-wide text-navy-400">{title}</span>
+        <span className="flex items-center gap-1.5">
+          {count > 0 && (
+            <span className="rounded-full bg-brand-100 px-1.5 text-[10px] font-bold text-brand-700">{count}</span>
+          )}
+          <ChevronDown className={`h-4 w-4 text-navy-300 transition ${open ? "" : "-rotate-90"}`} />
+        </span>
+      </button>
+      {open && <div className="mt-1.5">{children}</div>}
     </div>
   );
 }
@@ -115,7 +140,7 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
 
       {/* Direction */}
       {facets.directions.length > 0 && (
-        <Section title="Direction">
+        <Section title="Direction" count={filters.directions.length}>
           <div className="flex flex-wrap gap-1.5">
             {facets.directions.map((o) => {
               const dir = directionStyle(o.value);
@@ -135,7 +160,7 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
       )}
 
       {/* Confidence buckets — compact, with visible plain-language descriptions. */}
-      <Section title="Confidence">
+      <Section title="Confidence" count={filters.confidence.length}>
         <div className="space-y-1">
           {CONFIDENCE_BUCKETS.map((b) => {
             const active = filters.confidence.includes(b.key);
@@ -164,7 +189,7 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
 
       {/* State */}
       {facets.states.length > 0 && (
-        <Section title="State">
+        <Section title="State" count={filters.states.length}>
           <div className="flex flex-wrap gap-1.5">
             {facets.states.map((o) => (
               <Tag
@@ -181,24 +206,28 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
 
       {/* Issue */}
       {facets.issues.length > 0 && (
-        <Section title="Issue">
+        <Section title="Issue" count={filters.issues.length} defaultOpen={false}>
           <div className="flex flex-wrap gap-1.5">
-            {facets.issues.map((o) => (
-              <Tag
-                key={o.value}
-                active={filters.issues.includes(o.value)}
-                onClick={() => onToggle("issues", o.value)}
-              >
-                {o.value}
-              </Tag>
-            ))}
+            {facets.issues.map((o) => {
+              const Icon = issueIcon(o.value);
+              return (
+                <Tag
+                  key={o.value}
+                  active={filters.issues.includes(o.value)}
+                  onClick={() => onToggle("issues", o.value)}
+                >
+                  <Icon className="h-3 w-3" />
+                  {o.value}
+                </Tag>
+              );
+            })}
           </div>
         </Section>
       )}
 
       {/* Signal type */}
       {facets.types.length > 0 && (
-        <Section title="Type">
+        <Section title="Type" count={filters.types.length} defaultOpen={false}>
           <div className="flex flex-wrap gap-1.5">
             {facets.types.map((o) => (
               <Tag
