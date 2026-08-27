@@ -179,9 +179,12 @@ function DraftBlock({ draft, languages }: { draft: DraftVariant; languages: Lang
       {/* Translate control */}
       <div className="mt-2 flex items-center gap-2">
         <LanguagesIcon className="h-3.5 w-3.5 text-navy-400" />
+        <span className="text-xs font-medium text-navy-500">English</span>
+        <span className="text-navy-400">→</span>
         <select
           value={lang}
           onChange={(e) => setLang(e.target.value)}
+          aria-label="Translate to language"
           className="rounded-md border border-navy/15 bg-white px-2 py-1 text-xs text-navy focus:border-brand-500 focus:outline-none"
         >
           {languages.map((l) => (
