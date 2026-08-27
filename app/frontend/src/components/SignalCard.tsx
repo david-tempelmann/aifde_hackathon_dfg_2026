@@ -59,7 +59,7 @@ export default function SignalCard({
             title="Priority score (impact, urgency, locality, evidence)"
           >
             <TrendingUp className="h-3 w-3" />
-            {Math.round(signal.priority_score)}
+            {Math.round(signal.priority_score * 100)}
           </span>
         )}
         <span className="ml-auto flex items-center gap-3 text-navy-400">

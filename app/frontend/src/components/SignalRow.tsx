@@ -42,7 +42,7 @@ export default function SignalRow({
             title="Priority score (impact, urgency, locality, evidence)"
           >
             <TrendingUp className="h-3 w-3" />
-            {Math.round(signal.priority_score)}
+            {Math.round(signal.priority_score * 100)}
           </span>
         )}
       </div>

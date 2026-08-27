@@ -75,7 +75,7 @@ export default function SignalDrawer({
               {signal.priority_score != null && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-gold-100 px-2.5 py-1 font-semibold text-navy">
                   <TrendingUp className="h-3 w-3" />
-                  Priority {Math.round(signal.priority_score)}
+                  Priority {Math.round(signal.priority_score * 100)}
                 </span>
               )}
             </div>
