@@ -1,9 +1,9 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Silver 01 — documents
-# MAGIC Normalize the raw layer (`raw_issues`) into a clean, citable document table.
+# MAGIC Normalize the raw layer (`bronze_raw_issues`) into a clean, citable document table.
 # MAGIC
-# MAGIC - 1:1 with `raw_issues` (one document per scraped item).
+# MAGIC - 1:1 with `bronze_raw_issues` (one document per scraped item).
 # MAGIC - `full_text` = title + cleaned content, the exact text we chunk and cite against.
 # MAGIC - `content_hash` on the normalized main text — a stable change-detection key for a
 # MAGIC   later incremental path (see solution-design §6); unused while we full-reprocess.
@@ -16,7 +16,7 @@ dbutils.widgets.text("catalog", "ai_fde_hackathon_catalog")
 dbutils.widgets.text("schema", "brickhearts")
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
-print(f"Building {catalog}.{schema}.documents")
+print(f"Building {catalog}.{schema}.silver_documents")
 
 # COMMAND ----------
 
@@ -31,10 +31,13 @@ print(f"Building {catalog}.{schema}.documents")
 #   formats and fall back to the first-seen timestamp so `published_date` is
 #   never null.
 spark.sql(f"""
-CREATE OR REPLACE TABLE {catalog}.{schema}.documents AS
+CREATE OR REPLACE TABLE {catalog}.{schema}.silver_documents AS
 WITH cleaned AS (
   SELECT
-    issue_id                                   AS document_id,
+    -- bronze has no id column; derive a stable document_id from the source URL
+    -- (fallback to source+title+date for the rare row without a URL).
+    concat('doc_', substr(sha2(coalesce(nullif(trim(url), ''),
+             concat_ws('|', source, title, date)), 256), 1, 16)) AS document_id,
     source,
     source_type,
     region,
@@ -51,7 +54,7 @@ WITH cleaned AS (
     date                                        AS raw_date,
     first_seen_at,
     last_seen_at
-  FROM {catalog}.{schema}.raw_issues
+  FROM {catalog}.{schema}.bronze_raw_issues
 )
 SELECT
   document_id,
@@ -82,11 +85,11 @@ FROM cleaned
 
 # COMMAND ----------
 
-n = spark.table(f"{catalog}.{schema}.documents").count()
+n = spark.table(f"{catalog}.{schema}.silver_documents").count()
 print(f"documents: {n} rows")
 display(
     spark.sql(
         f"SELECT document_id, source_type, region, published_date, length(full_text) AS full_len, title "
-        f"FROM {catalog}.{schema}.documents ORDER BY full_len DESC LIMIT 10"
+        f"FROM {catalog}.{schema}.silver_documents ORDER BY full_len DESC LIMIT 10"
     )
 )

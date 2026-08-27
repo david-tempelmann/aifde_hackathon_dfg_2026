@@ -1,0 +1,20 @@
+# Reference-data build (place gazetteer). Runs rarely — not part of the per-signal
+# silver pipeline. Serverless; installs the go_opps wheel (for normalize_place_name).
+resources:
+  jobs:
+    reference_gazetteer:
+      name: ${bundle.name}-reference_gazetteer
+      tasks:
+        - task_key: gazetteer
+          notebook_task:
+            notebook_path: ../notebooks/reference/00_gazetteer.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+          environment_key: default
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl

@@ -38,14 +38,14 @@ if sample_per_type > 0:
       SELECT document_id FROM (
         SELECT document_id,
                row_number() OVER (PARTITION BY source_type ORDER BY document_id) AS rn
-        FROM {catalog}.{schema}.documents
+        FROM {catalog}.{schema}.silver_documents
       ) WHERE rn <= {sample_per_type}
     )
-    SELECT c.* FROM {catalog}.{schema}.chunks c
+    SELECT c.* FROM {catalog}.{schema}.silver_chunks c
     JOIN sampled_docs USING (document_id)
     """)
 else:
-    spark.sql(f"CREATE OR REPLACE TEMP VIEW _chunk_source AS SELECT * FROM {catalog}.{schema}.chunks")
+    spark.sql(f"CREATE OR REPLACE TEMP VIEW _chunk_source AS SELECT * FROM {catalog}.{schema}.silver_chunks")
 
 print("chunks to extract:", spark.table("_chunk_source").count())
 
@@ -57,7 +57,7 @@ print("chunks to extract:", spark.table("_chunk_source").count())
 # STRUCT<result, errorMessage> — we split those into columns for observability.
 spark.sql(
     f"""
-    CREATE OR REPLACE TABLE {catalog}.{schema}.signal_extractions AS
+    CREATE OR REPLACE TABLE {catalog}.{schema}.silver_signal_extractions AS
     WITH raw AS (
       SELECT
         c.chunk_id,
@@ -69,7 +69,7 @@ spark.sql(
           responseFormat => :rformat
         ) AS resp
       FROM _chunk_source c
-      JOIN {catalog}.{schema}.documents d USING (document_id)
+      JOIN {catalog}.{schema}.silver_documents d USING (document_id)
     )
     SELECT
       chunk_id,
@@ -85,14 +85,14 @@ spark.sql(
 
 # COMMAND ----------
 
-total = spark.table(f"{catalog}.{schema}.signal_extractions").count()
+total = spark.table(f"{catalog}.{schema}.silver_signal_extractions").count()
 errors = spark.sql(
-    f"SELECT count(*) c FROM {catalog}.{schema}.signal_extractions WHERE error_message IS NOT NULL"
+    f"SELECT count(*) c FROM {catalog}.{schema}.silver_signal_extractions WHERE error_message IS NOT NULL"
 ).collect()[0]["c"]
 print(f"signal_extractions: {total} rows, {errors} errored")
 display(
     spark.sql(
         f"SELECT chunk_id, left(response, 300) AS response_preview, error_message "
-        f"FROM {catalog}.{schema}.signal_extractions LIMIT 5"
+        f"FROM {catalog}.{schema}.silver_signal_extractions LIMIT 5"
     )
 )

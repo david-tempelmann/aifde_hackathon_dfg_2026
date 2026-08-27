@@ -18,7 +18,7 @@ catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
 max_chars = int(dbutils.widgets.get("max_chars"))
 overlap = int(dbutils.widgets.get("overlap"))
-print(f"Chunking {catalog}.{schema}.documents (max_chars={max_chars}, overlap={overlap})")
+print(f"Chunking {catalog}.{schema}.silver_documents (max_chars={max_chars}, overlap={overlap})")
 
 # COMMAND ----------
 
@@ -44,7 +44,7 @@ def chunk_udf(text):
     return [(c.chunk_index, c.char_start, c.char_end, c.text) for c in chunk_text(text, max_chars, overlap)]
 
 
-docs = spark.table(f"{catalog}.{schema}.documents").select("document_id", "full_text")
+docs = spark.table(f"{catalog}.{schema}.silver_documents").select("document_id", "full_text")
 chunks = (
     docs.withColumn("chunk", F.explode(chunk_udf("full_text")))
     .select(
@@ -56,16 +56,16 @@ chunks = (
         F.col("chunk.text").alias("text"),
     )
 )
-chunks.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{catalog}.{schema}.chunks")
+chunks.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{catalog}.{schema}.silver_chunks")
 
 # COMMAND ----------
 
 n_docs = docs.count()
-n_chunks = spark.table(f"{catalog}.{schema}.chunks").count()
+n_chunks = spark.table(f"{catalog}.{schema}.silver_chunks").count()
 print(f"{n_chunks} chunks from {n_docs} documents (avg {n_chunks / max(n_docs, 1):.2f} chunks/doc)")
 display(
     spark.sql(
-        f"SELECT document_id, count(*) AS n_chunks FROM {catalog}.{schema}.chunks "
+        f"SELECT document_id, count(*) AS n_chunks FROM {catalog}.{schema}.silver_chunks "
         f"GROUP BY document_id HAVING count(*) > 1 ORDER BY n_chunks DESC LIMIT 10"
     )
 )
