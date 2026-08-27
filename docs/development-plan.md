@@ -22,8 +22,8 @@ bootstrap step against the contracts; nobody waits on the 4th person.
 | WP | Scope (Day 1) | Self-bootstrap (hour 0, no external dependency) | Produces (contract) |
 |----|---------------|--------------------------------------------------|---------------------|
 | **WP1 — Ingest → chunks** | Scrape target pages, clean HTML, chunk → `documents` / `chunks`. Bundle job. | Owner picks **2–3 sample URLs** per state themselves to start. | **Contract A** tables |
-| **WP2 — Extract → Gold** `M`/`S` | Entity extraction + resolution (Signal/Issue/Place), semantic/graph data model, ranking, Gold + Lakebase sync. **Owns the ontology baseline.** | Owner writes a handful of **synthetic docs/chunks** + a **first-cut vocab** inline. | **Contract B** tables |
-| **WP3 — App** `M` | Databricks App **core dashboard**: browse/filter opportunities (issue, place, time, confidence), detail view, citation rendering (Text-Fragment links), app shell + app-owned Lakebase tables (`app_state`). *(Outreach drafting + graph views are Day 2.)* Assumes a first datamodel ≈ WP2's. | Owner **seeds Lakebase with sample rows** matching Contract B. | The app |
+| **WP2 — Extract → Gold** `M`/`S` | Entity extraction + resolution (Signal/Issue/Place), incl. **relevance direction** (opportunity/risk/watch) + legislative signal types, semantic/graph data model, ranking, Gold + Lakebase sync. **Owns the ontology baseline.** | Owner writes a handful of **synthetic docs/chunks** (a few legislative) + a **first-cut vocab** inline. | **Contract B** tables |
+| **WP3 — App** `M` | Databricks App **core dashboard**, **state-scoped by default**: browse/filter signals (issue, place, time, confidence, opportunity vs. risk), detail view, citation rendering (Text-Fragment links), app shell + app-owned Lakebase tables (`app_state`). *(Action studio + graph views are Day 2.)* Assumes a first datamodel ≈ WP2's. | Owner **seeds Lakebase with sample rows** matching Contract B. | The app |
 | **WP4 — Enhance** (optional, later) | **Non-blocking** improvements layered on top whenever the 4th person is free: expand source registry + robots/terms review, refine issue taxonomy/gazetteer, spot-check extraction quality, start demo story. | — depends on nothing; nothing depends on it | Better inputs + demo |
 
 **Why this split works:** each of WP1/WP2/WP3 can start and finish Day 1 **alone**, against its
@@ -35,8 +35,9 @@ pure upside — it improves sources, taxonomy, and the demo, but the core never 
 First close the loop, then build the features that assume a working spine:
 
 - **Integrate** — swap mocks for live tables (real WP1 output → WP2, real WP2 Gold → WP3).
-- **Outreach drafting studio** `M` — grounded message generation via `ai_query` over the
-  selected opportunity's citations + approved GO facts; human-review before use.
+- **Action studio** — grounded generation via `ai_query` over the selected signal's citations +
+  approved GO facts; human-review before use. **Recruit-partner draft** `M`; **escalate**
+  summary and **advocate / amended bill language** as stretch `C`.
 - **Graph representation / UI / interaction** `S`/`C` (`solution-design.md` §8) — hotspot
   matrix, corroboration clusters, explained mini-graph; interactive/chat explorer is a stretch `Could`.
 
@@ -51,8 +52,8 @@ Then, as capacity allows (roughly priority order):
 | Requirement | Where |
 |-------------|-------|
 | Web scraping (NY/CA/VA) `M` | WP1 (+ WP4 source selection) |
-| Outreach dashboard, region-specific `M` | WP3 (Day 1 core) |
-| Outreach message drafting `M` | Day 2 (outreach studio) |
+| Outreach dashboard, region-specific `M` | WP3 (Day 1 core, state-scoped) |
+| Outreach message drafting `M` | Day 2 (action studio — recruit draft) |
 | Citations for all GenAI `M` | WP2 (produce) + WP3 (render) |
 | Basic knowledge graph `S` | WP2 (data) + Day 2 (views) |
 | Robust NER `C` | WP2 baseline + Day 2 (resolution) |

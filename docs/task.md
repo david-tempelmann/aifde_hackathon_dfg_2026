@@ -8,6 +8,9 @@ The team functions like a sales org, working to onboard users onto the platform.
 
 Additionally, we want to build a knowledge graph to support meta-analysis. This piece is more experimental and open to creative direction.
 
+## Clarification on Use Case
+the use case in our mind is basically:  GO State Director gains insight on legislative action in state X.  the intel may or may not be actionable.  in the latter case, the action may be something that may or may not be limited to the given state.  in the former case, the state director can share upwards for strategic assessment.  in the latter case, the state director may use the knowledge while recruiting new careportal partners.   a hypothetical case would be a child and family welfare committee hearing where new reporting mandates are being discussed that could adversely impact some aspect of careportal.  the state director and care portal in general can work with local folks to lobby the committee and attempt to offer amended language for the bill in question.
+
 ## Requirements
 ### Must Have
 - Web scraping for the regions listed in Appendix A: Web Scraping

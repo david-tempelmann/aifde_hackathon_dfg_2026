@@ -1,12 +1,27 @@
 # GO Project — Solution Design (v0.1)
 
-> High-level architecture for turning scraped public web content into **evidence-backed
-> outreach opportunities** for the GO Project outreach team, plus an experimental
+> High-level architecture for turning scraped public web content — primarily **state
+> legislative activity** — into **evidence-backed, state-scoped signals** (both
+> **opportunities and risks**) for GO Project **State Directors**, plus an experimental
 > **knowledge graph** for meta-analysis.
 >
 > This is a *first draft* built on reasonable assumptions. It focuses on the **data
 > pipeline**, assuming scraped web documents are **already available in Unity Catalog**.
 > Everything is batch, governed, and Databricks-native.
+
+### Primary use case (per the task's clarification)
+
+A **GO State Director** gains insight on **legislative action in their state**. A signal may be:
+
+- an **opportunity** — a moment to recruit CarePortal partners or create momentum; or
+- a **risk/threat** — e.g. a child-and-family-welfare committee hearing proposing new
+  **reporting mandates that could adversely impact CarePortal**; or
+- a **watch** — relevant context, not yet actionable.
+
+Downstream actions the app should support: **recruit partners** (outreach draft — `M`),
+**escalate upward** for strategic assessment (`C`), and **advocate / suggest amended bill
+language** (creative `C`). Insight may stay in-state or roll up across states — which is what
+the knowledge graph / cross-state views are for.
 
 ## Requirement scope
 
@@ -98,17 +113,22 @@ flowchart LR
 
 | Type | Tier | What it is | How it's produced |
 |------|------|-----------|-------------------|
-| **Signal** | `M` | An atomic "something is happening" claim, with a **type** (policy event, funding, report/indicator change, program, emergency, service gap), date(s), summary, affected populations. This is the outreach unit. | `ai_extract` + `ai_classify` |
+| **Signal** | `M` | An atomic "something is happening" claim, with a **type** (predominantly legislative: bill introduced, committee hearing, proposed mandate, vote, amendment; also funding, report/indicator change, program, emergency), a **relevance direction** (`opportunity` / `risk` / `watch`), date(s), summary, affected populations, confidence. The core unit the State Director acts on. | `ai_extract` + `ai_classify` |
 | **Issue** | `M` | Small GO-relevant **controlled taxonomy** — e.g. *housing stability, family preservation, food & material needs, youth mental health, education access, emergency response*. | `ai_classify` (fixed label set) |
 | **Place** | `M` | Geography (state → county → city/district), canonicalized. Drives the NY / CA / VA territory filter. | `ai_extract` + deterministic gazetteer resolution |
 | **Organization** | `C` | Agencies, councils, sponsors, nonprofits named in the source. Enables richer NER and outreach targeting. | `ai_extract` NER + alias resolution |
 | **Policy / Bill** | `C` | Named legislation / policy referenced (natural fit for legislative sources). | `ai_extract` NER |
 
 **Why this set?** `Signal / Issue / Place` is the minimum that satisfies Must (region-specific
-issues) and Should (a graph worth visualizing). `Organization` and `Policy` are the
-`Could`-have "robust NER" types — they light up the graph and outreach when data supports
-them, but nothing breaks if we skip them. Documents/chunks/citations stay in the
+issues) and Should (a graph worth visualizing). Given the **legislative** focus of the use
+case, `Policy / Bill` and `Organization` (committees, agencies, sponsors) are the
+**highest-value `Could`-have NER types** — they make the graph and advocacy actions far
+richer — but the spine works without them. Documents/chunks/citations stay in the
 **provenance model** (§5); they are *not* graph-navigation types.
+
+> **Relevance direction** (`opportunity` / `risk` / `watch`) is a first-class Signal
+> attribute, produced by `ai_classify` alongside the issue label. It lets the dashboard
+> surface **threats to CarePortal**, not just openings — central to the clarified use case.
 
 ---
 
@@ -316,8 +336,10 @@ erDiagram
 | **Gold** `M` | `opportunity_cards`, `opportunity_details`, `opportunity_citations` | Denormalized for the app; **transparent ranking** score |
 | **Gold** `S` | `graph_nodes`, `graph_edges` | **Derived** projection for the graph view (incl. co-occurrence edges) — *never the system of record* |
 
-**Ranking** (Gold, pure SQL): `priority = f(child_impact, timing/urgency, locality,
-evidence_confidence)` with every component visible in the UI.
+**Ranking** (Gold, pure SQL): `priority = f(impact_magnitude, timing/urgency, locality,
+evidence_confidence)` with every component visible in the UI. `impact_magnitude` captures
+**both directions** — a strong opportunity *or* a serious risk to CarePortal ranks high;
+`relevance_direction` lets the State Director filter to threats vs. openings.
 
 ---
 
@@ -388,10 +410,10 @@ Approaches, roughly in order of robustness/effort:
 ```mermaid
 flowchart LR
     G["🟩 Gold serving tables<br/>(Unity Catalog)"] -->|synced tables<br/>reverse ETL| LB[("🟩 Lakebase<br/>Postgres")]
-    LB --> DASH["🟩 Dashboard<br/>opportunities · filters · confidence"]
-    LB --> OUT["🟩 Outreach studio<br/>grounded draft + citations"]
+    LB --> DASH["🟩 Dashboard<br/>state-scoped signals · opportunity/risk · confidence"]
+    LB --> OUT["🟩 Action studio<br/>recruit draft · escalate · advocate"]
     LB --> GV["🟦🟪 Graph view<br/>hotspots · clusters · mini-graph"]
-    DASH & OUT & GV -.->|saved opps, drafts| STATE[("app_state<br/>separate Lakebase table")]
+    DASH & OUT & GV -.->|saved signals, drafts| STATE[("app_state<br/>separate Lakebase table")]
 
     classDef must fill:#dcfce7,stroke:#16a34a,color:#14532d;
     classDef should fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
@@ -404,7 +426,10 @@ flowchart LR
   Databricks App gets low-latency Postgres reads.
 - **Write path:** app-generated state (saved opportunities, outreach drafts) goes to a
   **separate Lakebase table**, *not* the synced ones (synced tables are read-only replicas).
-- The **App** (single Databricks App) hosts all three surfaces: Dashboard, Outreach studio,
+- **Default scope = the director's state**, with cross-state views for roll-up / strategic
+  assessment. The **Action studio** covers recruit-partner drafts (`M`) plus escalate and
+  advocate/amend actions (`C`).
+- The **App** (single Databricks App) hosts all three surfaces: Dashboard, Action studio,
   Graph view — inspired by the prototype's unified workspace.
 - **Note (to explore):** we might build the web app with **[AppKit](https://developers.databricks.com/docs/appkit/v0)**
   rather than a hand-rolled framework — could accelerate the UI for the hackathon. TBD.
@@ -417,10 +442,10 @@ flowchart LR
 > data-dependency note at the end — it changes what we actually need to build.
 
 **Problem with the prototype:** both a raw node/edge browser *and* the step-by-step "explore
-connections" path-walker force the user to think in graph topology. Outreach users don't want
-to traverse a graph — they want to know **where the pressure is** and **why an opportunity
-matters**. So we do the **graph reasoning in the backend and present human-legible patterns**,
-not nodes to click through.
+connections" path-walker force the user to think in graph topology. A State Director doesn't
+want to traverse a graph — they want to know **where the legislative pressure is** (opportunity
+*or* risk) and **why a signal matters**. So we do the **graph reasoning in the backend and
+present human-legible patterns**, not nodes to click through.
 
 Three layered views, simplest first:
 
