@@ -1,0 +1,64 @@
+# Gold sync — replicate the UC gold_* Delta tables into the Lakebase `gold`
+# Postgres schema the app reads. Validated to work WITHOUT CREATE CATALOG by
+# targeting an existing UC catalog (ai_fde_hackathon_catalog) as the destination
+# (synced_table_id) rather than a new database catalog. TRIGGERED sync: the
+# initial full snapshot runs on create; incremental refreshes apply CDF changes
+# when the pipeline is triggered (CDF is enabled on the sources). Destination
+# table names drop the `gold_` prefix so the app reads gold.opportunity_cards etc.
+resources:
+  postgres_synced_tables:
+    gold_dim_issues:
+      synced_table_id: ai_fde_hackathon_catalog.gold.dim_issues
+      branch: ${resources.postgres_branches.production.name}
+      postgres_database: databricks_postgres
+      source_table_full_name: ai_fde_hackathon_catalog.brickhearts.gold_dim_issues
+      primary_key_columns: [issue_id]
+      scheduling_policy: TRIGGERED
+      create_database_objects_if_missing: true
+      new_pipeline_spec:
+        storage_catalog: ai_fde_hackathon_catalog
+        storage_schema: brickhearts_sync
+    gold_dim_places:
+      synced_table_id: ai_fde_hackathon_catalog.gold.dim_places
+      branch: ${resources.postgres_branches.production.name}
+      postgres_database: databricks_postgres
+      source_table_full_name: ai_fde_hackathon_catalog.brickhearts.gold_dim_places
+      primary_key_columns: [place_id]
+      scheduling_policy: TRIGGERED
+      create_database_objects_if_missing: true
+      new_pipeline_spec:
+        storage_catalog: ai_fde_hackathon_catalog
+        storage_schema: brickhearts_sync
+    gold_opportunity_cards:
+      synced_table_id: ai_fde_hackathon_catalog.gold.opportunity_cards
+      branch: ${resources.postgres_branches.production.name}
+      postgres_database: databricks_postgres
+      source_table_full_name: ai_fde_hackathon_catalog.brickhearts.gold_opportunity_cards
+      primary_key_columns: [opportunity_id]
+      scheduling_policy: TRIGGERED
+      create_database_objects_if_missing: true
+      new_pipeline_spec:
+        storage_catalog: ai_fde_hackathon_catalog
+        storage_schema: brickhearts_sync
+    gold_opportunity_details:
+      synced_table_id: ai_fde_hackathon_catalog.gold.opportunity_details
+      branch: ${resources.postgres_branches.production.name}
+      postgres_database: databricks_postgres
+      source_table_full_name: ai_fde_hackathon_catalog.brickhearts.gold_opportunity_details
+      primary_key_columns: [opportunity_id]
+      scheduling_policy: TRIGGERED
+      create_database_objects_if_missing: true
+      new_pipeline_spec:
+        storage_catalog: ai_fde_hackathon_catalog
+        storage_schema: brickhearts_sync
+    gold_opportunity_citations:
+      synced_table_id: ai_fde_hackathon_catalog.gold.opportunity_citations
+      branch: ${resources.postgres_branches.production.name}
+      postgres_database: databricks_postgres
+      source_table_full_name: ai_fde_hackathon_catalog.brickhearts.gold_opportunity_citations
+      primary_key_columns: [citation_id]
+      scheduling_policy: TRIGGERED
+      create_database_objects_if_missing: true
+      new_pipeline_spec:
+        storage_catalog: ai_fde_hackathon_catalog
+        storage_schema: brickhearts_sync

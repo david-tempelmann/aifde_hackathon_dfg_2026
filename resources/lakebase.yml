@@ -1,0 +1,49 @@
+# Lakebase (Autoscaling) for the GO Project Gold serving layer — Contract B.
+# Autoscaling is declared with postgres_projects (+ branches); the ${resources...}
+# substitutions create the dependency chain so deploy ordering is:
+# project -> production branch -> app attach. Team access is granted to the
+# `brickhearts` group (project CAN_MANAGE + a superuser Postgres role).
+resources:
+  postgres_projects:
+    lakebase:
+      project_id: brickhearts-goproject-outreach
+      display_name: brickhearts_goproject_outreach (Lakebase)
+      pg_version: 17
+      default_endpoint_settings:
+        autoscaling_limit_min_cu: 0.5
+        autoscaling_limit_max_cu: 2
+      permissions:
+        - group_name: brickhearts
+          level: CAN_MANAGE
+
+  postgres_branches:
+    production:
+      parent: ${resources.postgres_projects.lakebase.name}
+      branch_id: production
+      no_expiry: true
+      is_protected: true
+      replace_existing: true # manage the implicitly-created production branch
+
+  # Team superuser role mapped to the Databricks group "brickhearts" — grants
+  # full access to all databases/schemas/tables (Gold + app state).
+  postgres_roles:
+    brickhearts_admin:
+      parent: ${resources.postgres_branches.production.name}
+      role_id: brickhearts
+      postgres_role: brickhearts
+      identity_type: GROUP
+      membership_roles:
+        - DATABRICKS_SUPERUSER
+    # NOTE: the app reads the synced Gold tables (owned by the sync pipeline's
+    # writer role) via a PUBLIC read grant run by the gold-schema owner — see
+    # app/lakebase/grant_app_sp.sql. (Granting databricks_superuser membership to
+    # the app SP needs ADMIN option, which the deployer doesn't have.)
+
+  # No postgres_databases resource — the project's implicit `databricks_postgres`
+  # database holds the Gold tables (Contract B). The app attaches to it directly
+  # (see resources/app.yml).
+  #
+  # Gold sync from UC (postgres_catalogs + postgres_synced_tables) is STAGED in
+  # resources/lakebase-sync.yml.disabled — blocked until an admin grants
+  # CREATE CATALOG on the metastore. Until then the app reads the hand-seeded
+  # Gold from app/lakebase/contract_b.sql.
