@@ -4,7 +4,7 @@ import { Activity, TrendingUp, AlertTriangle, Eye, Clock, type LucideIcon } from
 import { fetchOverview } from "../api";
 import type { Hotspot, OverviewResponse } from "../types";
 import { formatDate } from "../lib";
-import { issueIcon } from "../issueMeta";
+import { issueIcon, issueColor } from "../issueMeta";
 import CountUp from "../components/CountUp";
 
 export default function OverviewPage() {
@@ -98,7 +98,7 @@ export default function OverviewPage() {
                 <tr key={issue}>
                   <td className="py-1 pr-2 text-navy">
                     <span className="inline-flex items-center gap-1.5">
-                      <Icon className="h-3.5 w-3.5 text-brand-600" />
+                      <Icon className={`h-3.5 w-3.5 ${issueColor(issue)}`} />
                       {issue}
                     </span>
                   </td>

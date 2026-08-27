@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import type { ConfidenceBucket } from "../lib";
 import { directionStyle, humanizeType } from "../lib";
-import { issueIcon } from "../issueMeta";
+import { issueIcon, issueColor } from "../issueMeta";
 
 export type FilterFacet = "states" | "directions" | "issues" | "types" | "confidence";
 
@@ -55,7 +55,7 @@ function Tag({
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
         active
           ? "border-brand-600 bg-brand-600 text-white shadow-sm"
-          : "border-navy/15 bg-white text-navy-500 hover:border-brand-400 hover:text-navy"
+          : "border-navy/10 bg-white text-navy-500 hover:border-brand-300 hover:bg-brand-50 hover:text-navy"
       }`}
     >
       {children}
@@ -76,21 +76,25 @@ function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div>
+    <div className="py-3">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between py-1 text-left"
+        className="group flex w-full items-center justify-between text-left"
       >
-        <span className="text-xs font-semibold uppercase tracking-wide text-navy-400">{title}</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-navy-400 transition group-hover:text-navy-600">
+          {title}
+        </span>
         <span className="flex items-center gap-1.5">
           {count > 0 && (
-            <span className="rounded-full bg-brand-100 px-1.5 text-[10px] font-bold text-brand-700">{count}</span>
+            <span className="rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+              {count}
+            </span>
           )}
-          <ChevronDown className={`h-4 w-4 text-navy-300 transition ${open ? "" : "-rotate-90"}`} />
+          <ChevronDown className={`h-4 w-4 text-navy-300 transition group-hover:text-navy-500 ${open ? "" : "-rotate-90"}`} />
         </span>
       </button>
-      {open && <div className="mt-1.5">{children}</div>}
+      {open && <div className="mt-2">{children}</div>}
     </div>
   );
 }
@@ -113,31 +117,35 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
     filters.search.trim().length > 0;
 
   return (
-    <div className="space-y-4 rounded-xl border border-black/5 bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-navy">Filters</span>
+    <div className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="inline-flex items-center gap-2 text-sm font-bold text-navy">
+          <SlidersHorizontal className="h-4 w-4 text-brand-600" />
+          Filters
+        </span>
         {hasFilters && (
           <button
             onClick={onReset}
-            className="inline-flex items-center gap-1 text-xs font-medium text-navy-400 hover:text-navy"
+            className="inline-flex items-center gap-1 rounded-full bg-navy/[0.04] px-2 py-1 text-[11px] font-semibold text-navy-500 transition hover:bg-navy/[0.08] hover:text-navy"
           >
-            <X className="h-3.5 w-3.5" /> Clear all
+            <X className="h-3 w-3" /> Clear all
           </button>
         )}
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-navy-400" />
+        <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-navy-400" />
         <input
           type="text"
           value={filters.search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search issue, place, keyword…"
-          className="w-full rounded-lg border border-navy/15 bg-white py-2 pl-8 pr-2.5 text-sm text-navy shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          className="w-full rounded-xl border border-navy/10 bg-navy/[0.02] py-2 pl-9 pr-3 text-sm text-navy transition focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500"
         />
       </div>
 
+      <div className="mt-2 divide-y divide-black/5 border-t border-black/5">
       {/* Direction */}
       {facets.directions.length > 0 && (
         <Section title="Direction" count={filters.directions.length}>
@@ -159,7 +167,7 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
         </Section>
       )}
 
-      {/* Confidence buckets — compact, with visible plain-language descriptions. */}
+      {/* Confidence — buckets with visible plain-language descriptions. */}
       <Section title="Confidence" count={filters.confidence.length}>
         <div className="space-y-1">
           {CONFIDENCE_BUCKETS.map((b) => {
@@ -172,8 +180,8 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
                 aria-pressed={active}
                 className={`w-full rounded-lg border px-2.5 py-1.5 text-left transition ${
                   active
-                    ? "border-brand-400 bg-brand-50 ring-1 ring-brand-300"
-                    : "border-navy/15 bg-white hover:border-brand-300"
+                    ? "border-brand-300 bg-brand-50 ring-1 ring-brand-200"
+                    : "border-navy/10 bg-navy/[0.02] hover:border-brand-200 hover:bg-white"
                 }`}
               >
                 <div className="flex items-center gap-1.5">
@@ -216,7 +224,7 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
                   active={filters.issues.includes(o.value)}
                   onClick={() => onToggle("issues", o.value)}
                 >
-                  <Icon className="h-3 w-3" />
+                  <Icon className={`h-3 w-3 ${issueColor(o.value)}`} />
                   {o.value}
                 </Tag>
               );
@@ -241,6 +249,7 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
           </div>
         </Section>
       )}
+      </div>
     </div>
   );
 }

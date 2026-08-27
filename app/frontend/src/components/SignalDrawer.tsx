@@ -10,7 +10,7 @@ import {
   humanizeType,
 } from "../lib";
 import OutreachStudio from "./OutreachStudio";
-import { issueIcon } from "../issueMeta";
+import { issueIcon, issueColor } from "../issueMeta";
 
 function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   if (value == null || value === "") return null;
@@ -134,7 +134,7 @@ export default function SignalDrawer({
               value={
                 signal.issue_label ? (
                   <span className="inline-flex items-center gap-1.5">
-                    <IssueIcon className="h-3.5 w-3.5 text-brand-600" />
+                    <IssueIcon className={`h-3.5 w-3.5 ${issueColor(signal.issue_label)}`} />
                     {signal.issue_label}
                   </span>
                 ) : null

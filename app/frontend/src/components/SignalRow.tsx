@@ -1,7 +1,8 @@
-import { CalendarDays, MapPin, TrendingUp } from "lucide-react";
+import { CalendarDays, MapPin } from "lucide-react";
 import type { Signal } from "../types";
 import { confidenceColor, directionStyle, formatDate } from "../lib";
-import { issueIcon } from "../issueMeta";
+import { issueIcon, issueColor } from "../issueMeta";
+import ScoreGauge from "./ScoreGauge";
 
 // Compact-width but taller signal card used in the state swim lanes. Clicking it
 // opens the full detail drawer.
@@ -19,10 +20,7 @@ export default function SignalRow({
   const date = signal.event_date ?? signal.published_date;
   const conf = signal.confidence;
   const score = signal.priority_score != null ? Math.round(signal.priority_score * 100) : null;
-  const place =
-    signal.place_name && signal.state && signal.place_name !== signal.state
-      ? `${signal.place_name}, ${signal.state}`
-      : signal.place_name || signal.state;
+  const hasCity = !!(signal.place_name && signal.state && signal.place_name !== signal.state);
 
   return (
     <button
@@ -35,29 +33,39 @@ export default function SignalRow({
       <div className="mb-2 flex flex-wrap items-center gap-1.5 text-[10px]">
         {signal.issue_label && (
           <span className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-700">
-            <IssueIcon className="h-3 w-3" />
+            <IssueIcon className={`h-3 w-3 ${issueColor(signal.issue_label)}`} />
             {signal.issue_label}
           </span>
         )}
         {score != null && (
           <span
-            className="ml-auto inline-flex items-center gap-1 rounded-full bg-gold-100 px-2 py-0.5 font-semibold text-navy"
+            className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium text-navy-400"
             title="Priority score (impact, urgency, locality, evidence)"
           >
-            <TrendingUp className="h-3 w-3" />
-            {score}
+            Priority
+            <ScoreGauge score={score} />
           </span>
         )}
       </div>
 
-      <p className="line-clamp-3 text-[13px] font-semibold leading-snug text-navy">{signal.summary}</p>
+      <p className="line-clamp-3 min-h-[3.4rem] text-[13px] font-semibold leading-snug text-navy">{signal.summary}</p>
 
-      <div className="mt-3 flex items-center gap-3 text-[10px] text-navy-400">
-        {place && (
-          <span className="inline-flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            {place}
+      <div className="mt-3 flex min-h-[1.75rem] items-center gap-3 text-[10px] text-navy-400">
+        {hasCity ? (
+          <span className="inline-flex items-start gap-1">
+            <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+            <span className="flex flex-col leading-tight">
+              <span>{signal.place_name}</span>
+              <span>{signal.state}</span>
+            </span>
           </span>
+        ) : (
+          (signal.place_name || signal.state) && (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {signal.place_name || signal.state}
+            </span>
+          )
         )}
         {date && (
           <span className="inline-flex items-center gap-1">
@@ -67,6 +75,7 @@ export default function SignalRow({
         )}
         {conf != null && (
           <span className="ml-auto inline-flex items-center gap-1.5" title={`${Math.round(conf * 100)}% confidence`}>
+            Confidence
             <span className="h-1.5 w-12 overflow-hidden rounded-full bg-navy/10">
               <span className={`block h-full ${confidenceColor(conf)}`} style={{ width: `${Math.round(conf * 100)}%` }} />
             </span>

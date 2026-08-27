@@ -35,14 +35,7 @@ const FOCUS_ZOOM = 7;
 const US_BOUNDS = L.latLngBounds([24.5, -125], [49.4, -66.9]);
 const US_START = US_BOUNDS.pad(-0.1);
 
-const DIR_COLOR: Record<string, string> = {
-  opportunity: "#10b981",
-  risk: "#f43f5e",
-  watch: "#94a3b8",
-};
-
-function pinIcon(direction: string | null, selected: boolean): L.DivIcon {
-  const color = DIR_COLOR[direction ?? "watch"] ?? DIR_COLOR.watch;
+function pinIcon(color: string, selected: boolean): L.DivIcon {
   const size = selected ? 22 : 15;
   const ring = selected ? "box-shadow:0 0 0 4px rgba(7,115,167,0.35);" : "";
   return L.divIcon({
@@ -57,7 +50,7 @@ function clusterIcon(count: number, color: string): L.DivIcon {
   const size = 40;
   return L.divIcon({
     className: "",
-    html: `<span style="display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:9999px;background:${color};color:#fff;font-weight:700;font-size:15px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35), 0 0 16px ${color}aa;cursor:pointer;">${count}</span>`,
+    html: `<span style="display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:9999px;background:${color};color:#fff;font-weight:700;font-size:15px;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35), 0 0 16px ${color}aa;cursor:pointer;animation:signalPulse 2.6s ease-in-out infinite;">${count}</span>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
   });
@@ -248,7 +241,7 @@ function MapLayers({
             <Marker
               key={signal.signal_id}
               position={pos}
-              icon={pinIcon(signal.relevance_direction, signal.signal_id === selectedId)}
+              icon={pinIcon(stateColors.get(code) ?? "#0773a7", signal.signal_id === selectedId)}
               zIndexOffset={signal.signal_id === selectedId ? 1000 : 0}
               eventHandlers={{ click: () => onSelect(signal.signal_id) }}
             />

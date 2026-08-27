@@ -248,15 +248,6 @@ export default function SignalsPage() {
                   <ArrowLeft className="h-3.5 w-3.5" /> Go back to full view
                 </button>
               )}
-              {/* Legend */}
-              <div className="absolute bottom-3 left-3 z-[1000] rounded-lg bg-white/90 px-2.5 py-2 text-[10px] shadow-sm ring-1 ring-black/5 backdrop-blur">
-                <div className="mb-1 font-semibold uppercase tracking-wide text-navy-400">Signals</div>
-                <div className="flex flex-col gap-0.5 text-navy-500">
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Opportunity</span>
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-500" /> Risk</span>
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400" /> Watch</span>
-                </div>
-              </div>
             </div>
           )}
 
@@ -293,7 +284,7 @@ export default function SignalsPage() {
                 const isSelected = filters.states.includes(code);
                 const clickable = code !== "Other";
                 return (
-                  <section key={code} id={`state-${code}`} className="scroll-mt-24 space-y-3">
+                  <section key={code} id={`state-${code}`} className="animate-fade-up scroll-mt-24 space-y-3">
                     <button
                       onClick={() => clickable && toggleStateFilter(code)}
                       disabled={!clickable}
@@ -327,7 +318,7 @@ export default function SignalsPage() {
                     </button>
 
                     {/* Swim lanes: opportunity / risk / watch */}
-                    <div className="grid gap-3 md:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-3 [&:has(button:hover)_button:not(:hover)]:opacity-40">
                       {LANE_KEYS.map((key) => {
                         const ls = directionStyle(key);
                         const laneCards = group.filter((s) => (s.relevance_direction ?? "watch") === key);
