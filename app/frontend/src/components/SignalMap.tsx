@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { GeoJSON, MapContainer, Marker, useMap } from "react-leaflet";
+import { GeoJSON, MapContainer, Marker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Signal } from "../types";
@@ -87,6 +87,14 @@ function stateSummaryHtml(name: string, signals: Signal[], selected: boolean): s
       ${topIssue ? `<div style="margin-top:5px;font-size:11px;color:#5b7385">Top issue: <b>${topIssue}</b></div>` : ""}
       <div style="margin-top:6px;font-size:11px;font-weight:600;color:#0773a7">${hint}</div>
     </div>`;
+}
+
+// Deterministic shade of one base hue per state, for the monochrome basemap.
+function monoShade(key: string): string {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  const l = 85 + (h % 10); // 85–94% lightness — subtle but distinct per state
+  return `hsl(214, 26%, ${l}%)`;
 }
 
 interface Group {
@@ -202,13 +210,19 @@ function MapLayers({
   }, [selectedId]);
 
   const styleFeature = (feature?: GeoJSON.Feature): L.PathOptions => {
-    const code = STATE_NAME_TO_CODE[(feature?.properties as { name?: string })?.name ?? ""];
+    const name = (feature?.properties as { name?: string })?.name ?? "";
+    const code = STATE_NAME_TO_CODE[name];
     const color = code ? stateColors.get(code) : undefined;
-    if (!color) return { color: "#cbd5e1", weight: 1, fillColor: "#eef1f4", fillOpacity: 1, opacity: 1 };
-    if (code && selectedSet.has(code)) {
-      return { color: "#111827", weight: 3, fillColor: color, fillOpacity: 0.34, opacity: 1 };
+    // States with signals: their colour + a bold border (bolder still + black
+    // when the state is the selected filter).
+    if (color) {
+      if (code && selectedSet.has(code)) {
+        return { color: "#111827", weight: 3, fillColor: color, fillOpacity: 0.45, opacity: 1 };
+      }
+      return { color, weight: 2.5, fillColor: color, fillOpacity: 0.4, opacity: 1 };
     }
-    return { color, weight: 2, fillColor: color, fillOpacity: 0.28, opacity: 1 };
+    // Every other state: a shade of one base hue (monochrome choropleth).
+    return { color: "#ffffff", weight: 1, fillColor: monoShade(code || name), fillOpacity: 1, opacity: 1 };
   };
 
   const onEachFeature = (feature: GeoJSON.Feature, layer: L.Layer) => {
@@ -249,7 +263,15 @@ function MapLayers({
             position={pos}
             icon={clusterIcon(g.signals.length, stateColors.get(code) ?? "#0773a7")}
             eventHandlers={{ click: () => onToggleState(code) }}
-          />,
+          >
+            <Tooltip direction="top" opacity={1}>
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: stateSummaryHtml(STATE_CODE_TO_NAME[code] ?? code, g.signals, selectedSet.has(code)),
+                }}
+              />
+            </Tooltip>
+          </Marker>,
         ];
       })}
     </>
@@ -281,7 +303,7 @@ export default function SignalMap({
       zoomControl={false}
       dragging
       className="h-full w-full"
-      style={{ background: "#ffffff" }}
+      style={{ background: "#f8f6f3" }}
     >
       <MapLayers
         signals={signals}

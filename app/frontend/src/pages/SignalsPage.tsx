@@ -215,7 +215,7 @@ export default function SignalsPage() {
           </div>
 
           {showMap && !loading && signals.length > 0 && (
-            <div className="relative h-72 overflow-hidden rounded-xl border border-black/10 shadow-sm sm:h-80">
+            <div className="relative isolate z-0 h-72 overflow-hidden rounded-xl sm:h-80">
               <SignalMap
                 signals={signals}
                 selectedId={selectedId}
