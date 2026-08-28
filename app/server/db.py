@@ -116,13 +116,6 @@ _BOOTSTRAP_STATEMENTS = [
         content        text not null,
         created_at     timestamptz default now()
     )""",
-    # Daily signal-count snapshots, so the header can show a real "since
-    # yesterday" delta (the Gold cards have no per-row ingestion timestamp).
-    """create table if not exists app.signal_count_history (
-        day          date primary key,
-        total        int not null,
-        recorded_at  timestamptz default now()
-    )""",
     "grant usage, create on schema app to public",
     "grant select, insert, update, delete on all tables in schema app to public",
     "grant usage, select on all sequences in schema app to public",

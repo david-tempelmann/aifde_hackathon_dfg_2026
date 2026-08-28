@@ -1,32 +1,30 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { ArrowUp, LayoutGrid, Radar } from "lucide-react";
+import { LayoutGrid, Radar } from "lucide-react";
 import { fetchStats } from "./api";
 import goLogo from "./assets/go-project-logo.svg";
 import outreachLogo from "./assets/outreach-logo.png";
 
 function HeaderStats() {
-  const [stats, setStats] = useState<{ total: number; since_yesterday: number | null } | null>(null);
+  const [total, setTotal] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchStats().then(setStats).catch(() => setStats(null));
+    fetchStats().then((s) => setTotal(s.total)).catch(() => setTotal(null));
   }, []);
 
-  if (!stats) return null;
-  const up = stats.since_yesterday;
+  if (total == null) return null;
 
   return (
-    <div className="ml-auto flex items-center gap-4">
-      <div className="text-right leading-tight">
-        <div className="text-lg font-extrabold text-navy">{stats.total.toLocaleString()}</div>
-        <div className="text-[11px] font-medium uppercase tracking-wide text-navy-400">Signals</div>
+    <div className="ml-auto flex items-center gap-2">
+      {/* Pulsing green dot to signal the feed is live/up to date. */}
+      <span className="relative flex h-2.5 w-2.5" aria-hidden>
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+      </span>
+      <div className="leading-tight">
+        <span className="text-lg font-extrabold text-navy">{total.toLocaleString()}</span>
+        <span className="ml-1 text-xs font-medium text-navy-400">signals</span>
       </div>
-      {up != null && up > 0 && (
-        <div className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200">
-          <ArrowUp className="h-3.5 w-3.5" />
-          {up} since yesterday
-        </div>
-      )}
     </div>
   );
 }
