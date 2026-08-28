@@ -403,10 +403,10 @@
             <text x="48" y="83" class="tc" font-size="10.5">CalMatters · KQED · The City · Gothamist · Cardinal</text>
             <rect x="392" y="52" width="24" height="28" rx="6" fill="var(--opp-soft)"/><text x="404" y="70" class="tm" font-size="9" text-anchor="middle" fill="var(--opp)">free</text>
 
-            <rect x="30" y="104" width="400" height="52" rx="9" class="db"/>
-            <text x="48" y="129" class="t" font-size="13.5">Bright Data — Web Unlocker</text>
-            <text x="48" y="147" class="tc" font-size="10.5">Virginia Mercury · NPR · Stateline (IP-blocked)</text>
-            <rect x="388" y="116" width="32" height="28" rx="6" fill="var(--watch-soft)"/><text x="404" y="134" class="tm" font-size="9" text-anchor="middle" fill="var(--watch)">secret</text>
+            <rect x="30" y="104" width="400" height="52" rx="9" class="db2" style="stroke:var(--faint); stroke-dasharray:5 4"/>
+            <text x="48" y="129" class="tm" font-size="13.5" fill="var(--faint)">Bright Data — Web Unlocker</text>
+            <text x="48" y="147" class="tc" font-size="10.5">for IP-blocked feeds (Virginia Mercury · NPR · Stateline)</text>
+            <rect x="378" y="116" width="46" height="28" rx="6" class="db2" style="stroke:var(--faint)"/><text x="401" y="134" class="tc" font-size="9" text-anchor="middle">prepared</text>
 
             <rect x="30" y="168" width="400" height="52" rx="9" class="db"/>
             <text x="48" y="193" class="t" font-size="13.5">Bluesky — keyword search</text>
@@ -431,7 +431,7 @@
 
           <!-- converging flows -->
           <path d="M430 66  C 505 66, 505 208, 560 216" class="flow" marker-end="url(#ar-ing)"/>
-          <path d="M430 130 C 505 130, 508 214, 560 222" class="flow" marker-end="url(#ar-ing)"/>
+          <path d="M430 130 C 505 130, 508 214, 560 222" class="flow" style="stroke:var(--faint); stroke-dasharray:5 4" marker-end="url(#ar-ing)"/>
           <path d="M430 194 C 505 194, 512 220, 560 226" class="flow" marker-end="url(#ar-ing)"/>
           <path d="M430 258 C 505 258, 512 234, 560 232" class="flow" marker-end="url(#ar-ing)"/>
           <path d="M430 322 C 505 322, 508 246, 560 238" class="flow" marker-end="url(#ar-ing)"/>
@@ -461,7 +461,7 @@
     </figure>
 
     <div class="take two">
-      <div class="tk"><b>Free &amp; keyless first</b><span>Only IP-blocked feeds route through a Bright Data unlocker.</span></div>
+      <div class="tk"><b>Free &amp; keyless</b><span>Every live source needs no auth; a Bright Data unlocker is wired up for IP-blocked feeds but <b>not currently used</b>.</span></div>
       <div class="tk"><b>Append-only, hashed</b><span>A <span class="mono">content_hash</span> keeps an incremental <span class="mono">MERGE</span> path open later.</span></div>
     </div>
   </section>
