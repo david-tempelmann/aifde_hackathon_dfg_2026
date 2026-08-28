@@ -39,6 +39,16 @@ export default {
         },
         canvas: "#f8f6f3", // warm off-white background
       },
+      keyframes: {
+        "slide-up": {
+          "0%": { opacity: "0", transform: "translateY(14px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        // `both` keeps the start (hidden) state during the stagger delay.
+        "slide-up": "slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both",
+      },
     },
   },
   plugins: [],

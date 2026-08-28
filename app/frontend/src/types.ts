@@ -93,6 +93,60 @@ export interface TranslateResponse {
   model: string;
 }
 
+export type FindingCategory =
+  | "hot_place"
+  | "named_responder"
+  | "related_issue"
+  | "upcoming_event"
+  | "funding_hook"
+  | "crisis_signal";
+
+export interface Finding {
+  category: FindingCategory | string;
+  subject: string;
+  detail: string | null;
+  metric: number | null;
+  event_date: string | null;
+  source: string | null;
+  source_url: string | null;
+  quote: string | null;
+  finding: string;
+  so_what: string;
+}
+
+export interface DeepDivePayload {
+  topic: string;
+  region: string;
+  card_context: Record<string, string | null>;
+  generated_at: string;
+  genie_space_id: string;
+  genie_status: string;
+  row_count: number;
+  headline: string;
+  findings: Finding[];
+  who_to_recruit: string[];
+  recommended_play: string;
+  watch_outs: string;
+  narrative: string;
+  cached?: boolean;
+}
+
+export interface DeepDiveOptions {
+  topics: string[];
+  regions: string[];
+}
+
+export interface DeepDiveQuery {
+  topic: string;
+  region?: string;
+  signal_count?: string;
+  signal_mix?: string;
+  sources?: string;
+  key_dates?: string;
+  latest?: string;
+  refresh?: boolean;
+}
+
 export interface SignalQuery {
   state?: string;
   direction?: string;
