@@ -576,6 +576,40 @@ WHERE signal_count > 1 ORDER BY signal_count DESC
 """))
 
 # COMMAND ----------
+# MAGIC %md ## Comments on silver_events (for Genie / discoverability)
+
+# COMMAND ----------
+
+_EVENT_TABLE_COMMENT = ("Distinct real-world events: near-duplicate signals describing the same event "
+                        "(same type/direction/place/date) are collapsed here, turning duplicate scraping "
+                        "into a corroboration count. One row per event; members stay in silver_signals via event_id.")
+_EVENT_COL_COMMENTS = {
+    "event_id": "Stable event id (evt_<hash> of signal_type|relevance_direction|primary_place_geoid|event_date).",
+    "canonical_label": "Short human-readable label for the event.",
+    "signal_type": "Signal type shared by the event members (see silver_signals.signal_type).",
+    "relevance_direction": "opportunity, risk, or watch.",
+    "primary_place_geoid": "FIPS geoid of the event place, or state:<X> when no place resolved.",
+    "primary_place_name": "Canonical name of the event place.",
+    "event_date_min": "Earliest member event date.",
+    "event_date_max": "Latest member event date.",
+    "signal_count": "Number of member signals — corroboration strength.",
+    "document_count": "Distinct source documents across members.",
+    "source_count": "Distinct sources across members — cross-source corroboration.",
+    "confidence": "Max member overall_confidence.",
+    "match_method": "How canonical_label was assigned.",
+    "match_confidence": "Confidence of the label assignment (0-1).",
+    "rep_signal_id": "Representative member signal (highest confidence).",
+    "rep_summary": "Representative member summary.",
+    "rep_why_go": "Representative why-it-matters.",
+    "rep_url": "Representative source URL.",
+}
+_q = "'"
+spark.sql(f"COMMENT ON TABLE {catalog}.{schema}.silver_events IS '{_EVENT_TABLE_COMMENT.replace(_q, _q + _q)}'")
+for _c, _cm in _EVENT_COL_COMMENTS.items():
+    spark.sql(f"ALTER TABLE {catalog}.{schema}.silver_events ALTER COLUMN {_c} COMMENT '{_cm.replace(_q, _q + _q)}'")
+print("comments applied to silver_events")
+
+# COMMAND ----------
 # MAGIC %md ## Sanity check — a few signals with issue + place
 
 # COMMAND ----------

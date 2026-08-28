@@ -167,6 +167,88 @@ WHERE quote IS NOT NULL
 """)
 
 # COMMAND ----------
+# MAGIC %md ## Table & column comments (for Genie / discoverability)
+# MAGIC `CREATE OR REPLACE` above drops comments, so we (re)apply them every run.
+
+# COMMAND ----------
+
+_TABLE_COMMENTS = {
+    "gold_opportunity_cards": "One row per outreach opportunity (a GO-relevant signal), denormalized for serving: subject state, primary place and issue, relevance direction, signal type, confidence, and a transparent priority_score. Primary table for questions about opportunities/risks.",
+    "gold_opportunity_details": "Per-opportunity detail: summary, why it matters, recommended action, affected populations, and the four priority_score components. Join to gold_opportunity_cards on opportunity_id.",
+    "gold_opportunity_citations": "Grounding citation(s) per opportunity: the verbatim source quote and source URL. Join to gold_opportunity_cards on opportunity_id.",
+    "gold_dim_issues": "GO issue taxonomy: the controlled set of issue labels a signal can concern.",
+    "gold_dim_places": "Place dimension: FIPS geoid, canonical name, state (USPS), level, and lat/lon.",
+}
+_COL_COMMENTS = {
+    "gold_opportunity_cards": {
+        "opportunity_id": "Stable opportunity id (equals the underlying signal_id). One row per opportunity.",
+        "title": "Human-readable headline (source document title, else a summary excerpt).",
+        "state": "Subject territory the signal is about: NY, CA, VA, US (national), or OTHER (out-of-territory or ambiguous). Derived from the content geography, NOT where it was scraped.",
+        "place_id": "FIPS geoid of the primary (finest) place; u_<hash> when the place could not be resolved.",
+        "place_name": "Canonical name of the primary place (city, county, or state).",
+        "issue_id": "Primary GO issue id (see gold_dim_issues).",
+        "issue_label": "Primary GO issue label, e.g. Housing stability & homelessness.",
+        "relevance_direction": "From GO perspective: opportunity, risk, or watch.",
+        "signal_type": "What happened: bill_introduced, committee_hearing, proposed_mandate, vote, amendment, funding, report_indicator, program, emergency, or other.",
+        "event_date": "Date of the event (extracted date, else the document published date).",
+        "confidence": "Overall model confidence 0-1 that this is a real, GO-relevant, correctly-extracted signal.",
+        "priority_score": "Transparent ranking 0-1 = 0.35*impact_magnitude + 0.25*timing_urgency + 0.15*locality + 0.25*evidence_confidence (components in gold_opportunity_details). Higher = more important; risks and opportunities both rank high.",
+        "source_name": "Name of the source, e.g. CalMatters, NWS, Bluesky.",
+        "updated_at": "Timestamp this gold row was built.",
+    },
+    "gold_opportunity_details": {
+        "opportunity_id": "FK to gold_opportunity_cards.opportunity_id.",
+        "summary": "Neutral one to two sentence summary of the signal.",
+        "why_it_matters": "Why this matters to GO / CarePortal, grounded in the source.",
+        "recommended_action": "Suggested next action, templated by relevance_direction.",
+        "affected_populations": "Groups affected, e.g. foster youth, low-income families (array).",
+        "source_type": "Kind of source: government, news, news-aggregated, social, weather, or disaster.",
+        "impact_magnitude": "Ranking component 0-1: signal-type importance x direction (risk and opportunity high, watch damped).",
+        "timing_urgency": "Ranking component 0-1: proximity of event_date to today (about a 90-day decay).",
+        "locality": "Ranking component 0-1: geographic specificity (place > county > state > nation).",
+        "evidence_confidence": "Ranking component 0-1: the signal overall confidence.",
+    },
+    "gold_opportunity_citations": {
+        "citation_id": "Stable citation id.",
+        "opportunity_id": "FK to gold_opportunity_cards.opportunity_id.",
+        "quote": "Verbatim supporting quote from the source that grounds the signal.",
+        "source_name": "Name of the source.",
+        "source_url": "URL of the source page (append #:~:text=<quote> for a highlight deep link).",
+        "char_start": "Start character offset of the quote within the source document.",
+        "char_end": "End character offset of the quote within the source document.",
+        "retrieved_at": "When the source page was scraped.",
+        "is_primary": "True for the primary citation of the opportunity.",
+    },
+    "gold_dim_issues": {
+        "issue_id": "Stable issue id (primary key).",
+        "label": "Issue label shown to users.",
+        "description": "What the issue category covers.",
+    },
+    "gold_dim_places": {
+        "place_id": "FIPS geoid (primary key); u_<hash> for unresolved places.",
+        "canonical_name": "Canonical place name.",
+        "state": "Two-letter state (USPS), or US.",
+        "level": "Granularity: nation, state, county, place, or unresolved.",
+        "lat": "Latitude of the internal point (null for unresolved).",
+        "lon": "Longitude of the internal point (null for unresolved).",
+    },
+}
+
+
+def _apply_comments(table: str) -> None:
+    q = "'"  # escape single quotes by doubling
+    tc = _TABLE_COMMENTS.get(table)
+    if tc:
+        spark.sql(f"COMMENT ON TABLE {catalog}.{schema}.{table} IS '{tc.replace(q, q + q)}'")
+    for col, c in _COL_COMMENTS.get(table, {}).items():
+        spark.sql(f"ALTER TABLE {catalog}.{schema}.{table} ALTER COLUMN {col} COMMENT '{c.replace(q, q + q)}'")
+
+
+for _t in _TABLE_COMMENTS:
+    _apply_comments(_t)
+print("comments applied to gold tables")
+
+# COMMAND ----------
 
 for t in ["gold_dim_issues", "gold_dim_places", "gold_opportunity_cards",
           "gold_opportunity_details", "gold_opportunity_citations"]:
