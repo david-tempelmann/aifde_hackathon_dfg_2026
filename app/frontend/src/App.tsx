@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Home, Radar, Telescope } from "lucide-react";
+import { Home, Flame, Radar, Telescope } from "lucide-react";
 import { fetchStats } from "./api";
 import goLogo from "./assets/go-project-logo.svg";
 import outreachLogo from "./assets/outreach-logo.png";
@@ -73,6 +73,7 @@ export default function App() {
           </div>
           <nav className="ml-6 flex items-center gap-1">
             <NavItem to="/" icon={<Home className="h-4 w-4" />} label="Home" />
+            <NavItem to="/hot-issues" icon={<Flame className="h-4 w-4" />} label="Hot Issues" />
             <NavItem to="/signals" icon={<Radar className="h-4 w-4" />} label="Signals" />
             <NavItem to="/deep-dive" icon={<Telescope className="h-4 w-4" />} label="Deep Dive" />
           </nav>

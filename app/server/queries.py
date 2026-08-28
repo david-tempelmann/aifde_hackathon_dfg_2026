@@ -13,6 +13,13 @@ from . import config
 
 _S = config.GOLD_SCHEMA
 
+# The app's focus territory. Signals outside it (state 'OTHER' / 'US' / national)
+# are excluded everywhere the app reads Gold — the feed, the overview aggregates,
+# and the filter options — so the whole UI stays scoped to CA / NY / VA. The list
+# is a fixed constant (never user input), so it is safe to inline as a SQL literal.
+TERRITORY: tuple[str, ...] = ("CA", "NY", "VA")
+_TERRITORY_IN = "(" + ", ".join(f"'{s}'" for s in TERRITORY) + ")"
+
 # Whitelisted sort -> ORDER BY. `priority` (Gold ranking) is the default.
 SORTS: dict[str, str] = {
     "priority": "c.priority_score desc nulls last, c.event_date desc nulls last",
@@ -78,6 +85,9 @@ def build_signals_query(
     clauses: list[str] = []
     params: dict = {}
 
+    # Base scope: only the app's focus territory (drops OTHER / US / national).
+    clauses.append(f"c.state in {_TERRITORY_IN}")
+
     if state:
         clauses.append("c.state = %(state)s")
         params["state"] = state
@@ -114,13 +124,15 @@ def build_signals_query(
 
 FILTERS_QUERY = f"""
 select 'state' as kind, state as value, count(*)::int as n
-  from {_S}.opportunity_cards where state is not null group by state
+  from {_S}.opportunity_cards where state in {_TERRITORY_IN} group by state
 union all
 select 'direction', relevance_direction, count(*)::int
-  from {_S}.opportunity_cards where relevance_direction is not null group by relevance_direction
+  from {_S}.opportunity_cards
+  where relevance_direction is not null and state in {_TERRITORY_IN} group by relevance_direction
 union all
 select 'signal_type', signal_type, count(*)::int
-  from {_S}.opportunity_cards where signal_type is not null group by signal_type
+  from {_S}.opportunity_cards
+  where signal_type is not null and state in {_TERRITORY_IN} group by signal_type
 union all
 select 'issue', label, 0 from {_S}.dim_issues
 order by kind, n desc, value
@@ -136,7 +148,7 @@ select issue_label as issue, state,
        sum(case when relevance_direction = 'watch' then 1 else 0 end)::int as watch,
        max(event_date) as latest
 from {_S}.opportunity_cards
-where state is not null and issue_label is not null
+where state in {_TERRITORY_IN} and issue_label is not null
 group by issue_label, state
 """
 
@@ -149,4 +161,29 @@ select
   count(distinct state)::int as states,
   max(event_date) as latest
 from {_S}.opportunity_cards
+where state in {_TERRITORY_IN}
+"""
+
+# Total in-territory signal count for the header badge (/api/stats).
+STATS_QUERY = f"select count(*)::int as n from {_S}.opportunity_cards where state in {_TERRITORY_IN}"
+
+# --- Hot Issues (issue x place hotspots + KG mini sub-graph) ------------------
+
+# Territory in scope for the Hot Issues page — same focus territory as the rest.
+HOT_TERRITORY = TERRITORY
+
+
+def hot_signals_query() -> tuple[str, dict]:
+    """All in-territory signals (rich fields) — aggregated into hotspot cards in Python."""
+    return f"{_SELECT}where c.state = any(%(states)s)", {"states": list(HOT_TERRITORY)}
+
+
+# 1-hop KG neighbourhood for a set of signal nodes, from the synced graph tables.
+# src ids are the signal node ids ('sig_' || signal_id); labels come from graph_nodes.
+GRAPH_EDGES_FOR_SIGNALS = f"""
+select e.src_id, e.predicate, e.dst_type, n.label as dst_label,
+       e.weight, e.confidence
+from {_S}.graph_edges e
+join {_S}.graph_nodes n on n.node_id = e.dst_id
+where e.src_type = 'signal' and e.src_id = any(%(ids)s)
 """

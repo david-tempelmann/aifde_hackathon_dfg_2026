@@ -147,6 +147,50 @@ export interface DeepDiveQuery {
   refresh?: boolean;
 }
 
+export interface HotEdge {
+  predicate: string;
+  dst_type: string;
+  dst_label: string;
+  conf: number;
+}
+
+export interface HotSignal {
+  signal_id: string;
+  summary: string | null;
+  dir: Direction | null;
+  date: string | null;
+  type: string | null;
+  source: string | null;
+  url: string | null;
+  why_go: string | null;
+  edges: HotEdge[];
+}
+
+export interface HotIssueCard {
+  rank: number;
+  issue: string;
+  place: string;
+  state: string;
+  level: string;
+  n: number;
+  n_opp: number;
+  n_risk: number;
+  n_watch: number;
+  sources: string[];
+  heat: number;
+  top_priority: number;
+  latest: string | null;
+  nextup: string | null;
+  dom: Direction | string;
+  components: { priority: number; volume: number; recency: number; corroboration: number };
+  signals: HotSignal[];
+}
+
+export interface HotIssuesResponse {
+  count: number;
+  cards: HotIssueCard[];
+}
+
 export interface SignalQuery {
   state?: string;
   direction?: string;

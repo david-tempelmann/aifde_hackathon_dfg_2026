@@ -5,6 +5,7 @@ import type {
   DraftOption,
   DraftResponse,
   FilterOptions,
+  HotIssuesResponse,
   Language,
   OverviewResponse,
   SignalQuery,
@@ -38,6 +39,10 @@ export function fetchOverview(): Promise<OverviewResponse> {
 
 export function fetchStats(): Promise<{ total: number }> {
   return getJSON<{ total: number }>("/api/stats");
+}
+
+export function fetchHotIssues(limit = 4): Promise<HotIssuesResponse> {
+  return getJSON<HotIssuesResponse>(`/api/hotissues?limit=${limit}`);
 }
 
 export function fetchDeepDiveOptions(): Promise<DeepDiveOptions> {

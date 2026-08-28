@@ -94,12 +94,12 @@ function ScoredRow({ f }: { f: Finding }) {
 // Each finding type gets its own hue — a tinted card, matching border, a solid
 // icon chip, and a colored heading — so the bubbles read as distinct at a glance.
 const THEME = {
-  brand: { card: "border-brand-100 bg-brand-50/50", chip: "bg-brand-500 text-white", head: "text-brand-700" },
-  accent: { card: "border-accent-100 bg-accent-50/60", chip: "bg-accent-500 text-white", head: "text-accent-700" },
-  emerald: { card: "border-emerald-100 bg-emerald-50/50", chip: "bg-emerald-500 text-white", head: "text-emerald-700" },
-  rose: { card: "border-rose-100 bg-rose-50/50", chip: "bg-rose-500 text-white", head: "text-rose-700" },
-  indigo: { card: "border-indigo-100 bg-indigo-50/50", chip: "bg-indigo-500 text-white", head: "text-indigo-700" },
-  gold: { card: "border-gold-400/30 bg-gold-100/50", chip: "bg-gold-400 text-navy", head: "text-[#8a6d00]" },
+  brand: { card: "border-brand-200 bg-brand-50/50 shadow-brand-500/20", chip: "bg-brand-500 text-white", head: "text-brand-700" },
+  accent: { card: "border-accent-500/30 bg-accent-50/60 shadow-accent-500/20", chip: "bg-accent-500 text-white", head: "text-accent-700" },
+  emerald: { card: "border-emerald-200 bg-emerald-50/50 shadow-emerald-500/20", chip: "bg-emerald-500 text-white", head: "text-emerald-700" },
+  rose: { card: "border-rose-200 bg-rose-50/50 shadow-rose-500/20", chip: "bg-rose-500 text-white", head: "text-rose-700" },
+  indigo: { card: "border-indigo-200 bg-indigo-50/50 shadow-indigo-500/20", chip: "bg-indigo-500 text-white", head: "text-indigo-700" },
+  gold: { card: "border-gold-400/50 bg-gold-100/50 shadow-gold-400/30", chip: "bg-gold-400 text-navy", head: "text-[#8a6d00]" },
 };
 
 /** A titled bubble — one per finding type, with a meaning-coded color. */
@@ -125,7 +125,7 @@ function Bubble({
   const t = THEME[tone];
   return (
     <section
-      className={`animate-slide-up rounded-2xl border p-5 shadow-sm motion-reduce:animate-none ${t.card} ${className}`}
+      className={`animate-slide-up rounded-2xl border p-5 shadow-md transition-shadow hover:shadow-lg motion-reduce:animate-none ${t.card} ${className}`}
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="mb-3 flex items-center gap-2.5">
@@ -223,8 +223,36 @@ export default function FindingsPanel({ data }: { data: DeepDivePayload }) {
         </Bubble>
       )}
 
-      {/* The rest of the findings as a masonry so cards pack evenly regardless of height */}
-      <div className="gap-4 md:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
+      {/* The rest of the findings stacked full-width, one after another with spacing */}
+      <div className="space-y-4">
+        {places.length > 0 && (
+          <Bubble
+            icon={<MapPin className="h-4 w-4" />}
+            title="Where the need clusters"
+            count={places.length}
+            sub="signal count"
+            tone="indigo"
+            delay={240}
+          >
+            <div className="space-y-1.5">
+              {places.map((p, i) => (
+                <div key={i} className="flex items-center gap-3 text-[13px]">
+                  <span className="w-36 shrink-0 truncate text-navy">
+                    {p.subject} <span className="text-navy-400">{p.detail}</span>
+                  </span>
+                  <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-black/5">
+                    <span
+                      className="block h-full rounded-full bg-accent-500"
+                      style={{ width: `${(100 * (Number(p.metric) || 0)) / maxPlace}%` }}
+                    />
+                  </span>
+                  <span className="w-6 text-right text-xs text-navy-500">{p.metric}</span>
+                </div>
+              ))}
+            </div>
+          </Bubble>
+        )}
+
         {events.length > 0 && (
           <Bubble
             icon={<CalendarClock className="h-4 w-4" />}
@@ -232,7 +260,7 @@ export default function FindingsPanel({ data }: { data: DeepDivePayload }) {
             count={events.length}
             sub="ranked by priority"
             tone="accent"
-            delay={240}
+            delay={300}
           >
             <ul>
               {events.map((f, i) => (
@@ -256,7 +284,7 @@ export default function FindingsPanel({ data }: { data: DeepDivePayload }) {
             count={funding.length}
             sub="who received it"
             tone="emerald"
-            delay={300}
+            delay={360}
           >
             <ul>{funding.map((f, i) => <ScoredRow key={i} f={f} />)}</ul>
           </Bubble>
@@ -268,37 +296,9 @@ export default function FindingsPanel({ data }: { data: DeepDivePayload }) {
             title="Families in acute crisis now"
             count={crises.length}
             tone="rose"
-            delay={360}
-          >
-            <ul>{crises.map((f, i) => <ScoredRow key={i} f={f} />)}</ul>
-          </Bubble>
-        )}
-
-        {places.length > 0 && (
-          <Bubble
-            icon={<MapPin className="h-4 w-4" />}
-            title="Where the need clusters"
-            count={places.length}
-            sub="signal count"
-            tone="indigo"
             delay={420}
           >
-            <div className="space-y-1.5">
-              {places.map((p, i) => (
-                <div key={i} className="flex items-center gap-3 text-[13px]">
-                  <span className="w-36 shrink-0 truncate text-navy">
-                    {p.subject} <span className="text-navy-400">{p.detail}</span>
-                  </span>
-                  <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-black/5">
-                    <span
-                      className="block h-full rounded-full bg-accent-500"
-                      style={{ width: `${(100 * (Number(p.metric) || 0)) / maxPlace}%` }}
-                    />
-                  </span>
-                  <span className="w-6 text-right text-xs text-navy-500">{p.metric}</span>
-                </div>
-              ))}
-            </div>
+            <ul>{crises.map((f, i) => <ScoredRow key={i} f={f} />)}</ul>
           </Bubble>
         )}
 
