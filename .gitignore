@@ -241,6 +241,7 @@ spark-warehouse/
 # Editors
 .vscode/
 .idea/
+.cursor/
 *.swp
 *~
 
