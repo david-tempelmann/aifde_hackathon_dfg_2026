@@ -17,14 +17,20 @@
 dbutils.widgets.text("catalog", "ai_fde_hackathon_catalog")
 dbutils.widgets.text("schema", "brickhearts")
 dbutils.widgets.text("confidence_threshold", "")
+dbutils.widgets.text("canon_model", "")
+dbutils.widgets.text("event_model", "")
 catalog = dbutils.widgets.get("catalog")
 schema = dbutils.widgets.get("schema")
 
+from go_opps.canonicalize import DEFAULT_CANON_MODEL
+from go_opps.events import DEFAULT_EVENT_MODEL
 from go_opps.extraction import DEFAULT_CONFIDENCE_THRESHOLD
 from go_opps.vocab import ISSUE_TAXONOMY
 
 threshold = float(dbutils.widgets.get("confidence_threshold") or DEFAULT_CONFIDENCE_THRESHOLD)
-print(f"confidence_threshold={threshold}")
+canon_model = dbutils.widgets.get("canon_model") or DEFAULT_CANON_MODEL
+event_model = dbutils.widgets.get("event_model") or DEFAULT_EVENT_MODEL
+print(f"confidence_threshold={threshold}, canon_model={canon_model}, event_model={event_model}")
 
 # COMMAND ----------
 # MAGIC %md ## Dimensions — issues (controlled vocab) & place seed
@@ -57,7 +63,8 @@ struct<
   event_date: string,
   supporting_quote: string,
   why_go: string,
-  confidence: double
+  source_confidence: double,
+  overall_confidence: double
 >
 """
 
@@ -119,7 +126,7 @@ SELECT
   ) AS other_geo
 FROM joined
 WHERE s.is_go_relevant = true
-  AND s.confidence >= {threshold}
+  AND s.overall_confidence >= {threshold}
   AND length(trim(s.supporting_quote)) > 0
   AND quote_pos > 0                       -- drop ungrounded claims
 """)
@@ -146,7 +153,10 @@ WITH ranked AS (
     s.supporting_quote                                             AS quote,
     (quote_pos - 1)                                                AS quote_char_start,
     (quote_pos - 1 + length(s.supporting_quote))                  AS quote_char_end,
-    s.confidence                                                   AS confidence,
+    -- overall_confidence is the anchor (keeps the `confidence` column that gold
+    -- and the app read); source_confidence rides along as a trust diagnostic.
+    s.overall_confidence                                           AS confidence,
+    s.source_confidence                                            AS source_confidence,
     -- subject territory. Use a territory (NY/CA/VA) only with evidence; otherwise
     -- OTHER, so out-of-territory / ambiguous content isn't force-grouped:
     --  1. scrape region corroborated by the content's geography  -> region
@@ -167,7 +177,7 @@ WITH ranked AS (
     region                                                         AS source_region,
     url, source, source_type, published_date,
     row_number() OVER (
-      PARTITION BY document_id, s.signal_type ORDER BY s.confidence DESC
+      PARTITION BY document_id, s.signal_type ORDER BY s.overall_confidence DESC
     ) AS rn
   FROM candidates
 )
@@ -190,7 +200,7 @@ CREATE OR REPLACE TABLE {catalog}.{schema}.silver_signal_issues AS
 WITH winning AS (
   SELECT c.*,
          row_number() OVER (
-           PARTITION BY c.document_id, c.s.signal_type ORDER BY c.s.confidence DESC
+           PARTITION BY c.document_id, c.s.signal_type ORDER BY c.s.overall_confidence DESC
          ) AS rn
   FROM candidates c
 ),
@@ -199,7 +209,7 @@ exploded AS (
     sha2(concat_ws('|', document_id, s.signal_type), 256) AS signal_id,
     chunk_id                                              AS evidence_chunk_id,
     s.supporting_quote                                    AS evidence_quote,
-    s.confidence                                          AS confidence,
+    s.overall_confidence                                  AS confidence,
     explode(s.issue_labels)                               AS label
   FROM winning WHERE rn = 1
 )
@@ -240,7 +250,7 @@ WITH exploded AS (
   SELECT
     sha2(concat_ws('|', c.document_id, c.s.signal_type), 256) AS signal_id,
     c.chunk_id                                                AS evidence_chunk_id,
-    c.s.confidence                                            AS confidence,
+    c.s.overall_confidence                                    AS confidence,
     trim(pl.name)                                             AS raw_name,
     normalize_place(pl.name)                                  AS alias_norm,
     -- scope: place's own state hint (model code / territory name), else the
@@ -281,13 +291,17 @@ enriched AS (
          coalesce(g.canonical_name, d.canonical_name) AS canonical_name,
          coalesce(g.level, d.level)                   AS level,
          coalesce(g.usps, d.state)                    AS state,
-         g.parent_geoid                               AS parent_geoid
+         g.parent_geoid                               AS parent_geoid,
+         g.lat                                        AS lat,
+         g.lon                                        AS lon
   FROM d LEFT JOIN {catalog}.{schema}.silver_ref_gazetteer g ON g.geoid = d.place_id
 )
 -- one row per place_id (the pre-join DISTINCT can leave dupes that the gazetteer
--- join then normalizes to identical rows, e.g. 'us')
+-- join then normalizes to identical rows, e.g. 'us'). Unresolved (u_<hash>) places
+-- have no gazetteer match, so lat/lon are null (no map pin) — expected.
 SELECT place_id, max(canonical_name) AS canonical_name, max(level) AS level,
-       max(state) AS state, max(parent_geoid) AS parent_geoid
+       max(state) AS state, max(parent_geoid) AS parent_geoid,
+       max(lat) AS lat, max(lon) AS lon
 FROM enriched GROUP BY place_id
 """)
 
@@ -303,90 +317,263 @@ print("places:", spark.table(f"{catalog}.{schema}.silver_places").count())
 print("signal_places:", spark.table(f"{catalog}.{schema}.silver_signal_places").count())
 
 # COMMAND ----------
-# MAGIC %md ## organizations & policies dimensions + bridges (NER + resolution)
-# MAGIC Deterministic entity resolution (`go_opps.resolution`): bill-number normalization
-# MAGIC (`A.B. 2376 (Bains)` → `AB 2376`, state-qualified), named-program aliases (ACA, SNAP…),
-# MAGIC and org acronym-linking (`… Services (DHCS)` binds standalone `DHCS`). Surface variants
-# MAGIC collapse to one id; unmatched entities get a stable hashed fallback.
+# MAGIC %md ## organizations & policies — LLM canonicalization + bridges
+# MAGIC Open-ended entities (agencies, committees, nonprofits; bills, programs) are canonicalized
+# MAGIC by an LLM (`go_opps.canonicalize`): one `ai_query` batch per kind clusters the *distinct*
+# MAGIC surface strings into real-world entities, merging acronyms, abbreviations, and
+# MAGIC state-qualified / descriptive variants a rule set can't scale to (no hand-kept alias seed).
+# MAGIC The **canonical id is ours** — a stable hash of the model's canonical name, never the
+# MAGIC model's own — so ids stay deterministic across the full-reprocess pipeline; any surface the
+# MAGIC model drops falls back to a per-surface id (`llm_unassigned`). Each dimension also carries
+# MAGIC `entity_type` and `match_confidence`.
 
 # COMMAND ----------
 
-from go_opps.resolution import resolve_org_surfaces, resolve_policy
+import json
+
+from go_opps.canonicalize import (
+    assign_ids,
+    build_instruction,
+    build_payload,
+    response_format_json,
+)
 
 _signal_id = "sha2(concat_ws('|', c.document_id, c.s.signal_type), 256)"
 
 
-def _explode_ner(field: str, extra_cols: str = "") -> None:
-    """Explode a NER array field into (signal_id, evidence, surface[, state]) for
-    surviving signals only."""
+def _cluster(kind: str, items: list[tuple[int, str, int]]) -> list[dict]:
+    """One ai_query batch over the distinct surfaces → the model's clusters."""
+    if not items:
+        return []
+    resp = spark.sql(
+        f"""
+        SELECT ai_query(
+          '{canon_model}',
+          concat(:instr, '\\n\\nITEMS:\\n', :payload),
+          failOnError => false,
+          responseFormat => :rformat
+        ) AS resp
+        """,
+        args={
+            "instr": build_instruction(kind),
+            "payload": build_payload(items),
+            "rformat": response_format_json(kind),
+        },
+    ).collect()[0]["resp"]
+    if resp["errorMessage"]:
+        raise RuntimeError(f"canonicalization ai_query failed for {kind}: {resp['errorMessage']}")
+    return json.loads(resp["result"])["clusters"]
+
+
+def canonicalize_ner(kind: str, id_col: str, dim_table: str, bridge_table: str) -> None:
+    """Explode a NER array over surviving signals, LLM-cluster the distinct surfaces to
+    deterministic ids, then build the dimension (+ aliases / type / confidence) and bridge."""
     spark.sql(f"""
-    CREATE OR REPLACE TEMP VIEW _ner_{field} AS
+    CREATE OR REPLACE TEMP VIEW _ner_{kind} AS
     SELECT {_signal_id} AS signal_id, c.chunk_id AS evidence_chunk_id,
-           c.s.confidence AS confidence, trim(name) AS surface {extra_cols}
+           c.s.overall_confidence AS confidence, trim(name) AS surface
     FROM candidates c
-    LATERAL VIEW explode(c.s.{field}) t AS name
+    LATERAL VIEW explode(c.s.{kind}) t AS name
     WHERE length(trim(name)) > 0
       AND EXISTS (SELECT 1 FROM {catalog}.{schema}.silver_signals s WHERE s.signal_id = {_signal_id})
     """)
 
+    rows = spark.sql(
+        f"SELECT surface, count(*) AS n FROM _ner_{kind} GROUP BY surface ORDER BY n DESC, surface"
+    ).collect()
+    items = [(i, r["surface"], r["n"]) for i, r in enumerate(rows)]
+    dims, maps = assign_ids(_cluster(kind, items), items, kind)
 
-# --- organizations: resolve distinct surfaces on the driver (acronym linking) --
-_explode_ner("organizations")
-org_counts = {r["surface"]: r["n"] for r in
-              spark.sql("SELECT surface, count(*) n FROM _ner_organizations GROUP BY surface").collect()}
-org_map = resolve_org_surfaces(org_counts)  # surface -> (org_id, canonical_name, method)
-spark.createDataFrame(
-    [(s, v[0], v[1], v[2]) for s, v in org_map.items()],
-    "surface string, org_id string, canonical_name string, match_method string",
-).createOrReplaceTempView("_org_map")
+    _dim_ddl = ("id string, canonical_name string, entity_type string, "
+                "match_method string, match_confidence double")
+    spark.createDataFrame(dims or [], _dim_ddl).createOrReplaceTempView(f"_{kind}_dim")
+    spark.createDataFrame(maps or [], "surface string, id string").createOrReplaceTempView(f"_{kind}_map")
 
-spark.sql(f"""
-CREATE OR REPLACE TABLE {catalog}.{schema}.silver_organizations AS
-SELECT org_id, max(canonical_name) AS canonical_name,
-       array_sort(collect_set(surface)) AS aliases, min(match_method) AS match_method
-FROM _org_map GROUP BY org_id
-""")
-spark.sql(f"""
-CREATE OR REPLACE TABLE {catalog}.{schema}.silver_signal_orgs AS
-SELECT e.signal_id, m.org_id, max(e.confidence) AS confidence, min(e.evidence_chunk_id) AS evidence_chunk_id
-FROM _ner_organizations e JOIN _org_map m USING (surface)
-GROUP BY e.signal_id, m.org_id
-""")
+    spark.sql(f"""
+    CREATE OR REPLACE TABLE {catalog}.{schema}.{dim_table} AS
+    SELECT d.id AS {id_col}, d.canonical_name, d.entity_type,
+           array_sort(collect_set(m.surface)) AS aliases,
+           d.match_method, d.match_confidence
+    FROM _{kind}_dim d LEFT JOIN _{kind}_map m ON m.id = d.id
+    GROUP BY d.id, d.canonical_name, d.entity_type, d.match_method, d.match_confidence
+    """)
 
-# --- policies: bill-number / alias resolution, state-qualified per signal --------
-# (joins silver_signals for the subject state used to qualify bill codes)
-spark.sql(f"""
-CREATE OR REPLACE TEMP VIEW _ner_policies AS
-SELECT {_signal_id} AS signal_id, c.chunk_id AS evidence_chunk_id, c.s.confidence AS confidence,
-       trim(name) AS surface, s2.state AS state
-FROM candidates c
-JOIN {catalog}.{schema}.silver_signals s2 ON s2.signal_id = {_signal_id}
-LATERAL VIEW explode(c.s.policies) t AS name
-WHERE length(trim(name)) > 0
-""")
-pol_pairs = spark.sql("SELECT DISTINCT surface, state FROM _ner_policies").collect()
-pol_map = [(r["surface"], r["state"], *resolve_policy(r["surface"], r["state"])) for r in pol_pairs]
-spark.createDataFrame(
-    pol_map, "surface string, state string, policy_id string, canonical_name string, match_method string"
-).createOrReplaceTempView("_pol_map")
+    spark.sql(f"""
+    CREATE OR REPLACE TABLE {catalog}.{schema}.{bridge_table} AS
+    SELECT e.signal_id, m.id AS {id_col},
+           max(e.confidence) AS confidence, min(e.evidence_chunk_id) AS evidence_chunk_id
+    FROM _ner_{kind} e JOIN _{kind}_map m USING (surface)
+    GROUP BY e.signal_id, m.id
+    """)
 
-spark.sql(f"""
-CREATE OR REPLACE TABLE {catalog}.{schema}.silver_policies AS
-SELECT policy_id, max(canonical_name) AS canonical_name,
-       array_sort(collect_set(surface)) AS aliases, min(match_method) AS match_method
-FROM _pol_map GROUP BY policy_id
-""")
-spark.sql(f"""
-CREATE OR REPLACE TABLE {catalog}.{schema}.silver_signal_policies AS
-SELECT e.signal_id, m.policy_id, max(e.confidence) AS confidence, min(e.evidence_chunk_id) AS evidence_chunk_id
-FROM _ner_policies e JOIN _pol_map m ON e.surface = m.surface AND e.state <=> m.state
-GROUP BY e.signal_id, m.policy_id
-""")
+
+canonicalize_ner("organizations", "org_id", "silver_organizations", "silver_signal_orgs")
+canonicalize_ner("policies", "policy_id", "silver_policies", "silver_signal_policies")
 
 print("organizations:", spark.table(f"{catalog}.{schema}.silver_organizations").count(),
       "| signal_orgs:", spark.table(f"{catalog}.{schema}.silver_signal_orgs").count())
 print("policies:", spark.table(f"{catalog}.{schema}.silver_policies").count(),
       "| signal_policies:", spark.table(f"{catalog}.{schema}.silver_signal_policies").count())
+
+# COMMAND ----------
+# MAGIC %md ## events — collapse same-event duplicate signals across documents
+# MAGIC One real-world event scraped as several documents yields near-duplicate signals (e.g. a
+# MAGIC San Diego heat warning from 6 NWS feeds → 6 `emergency/risk/CA` signals). We group them
+# MAGIC with **LLM clustering** (`go_opps.events`): each signal is described by its document
+# MAGIC **title + location + date + type**; one `ai_query` batch groups the signals that describe
+# MAGIC the same real-world event. As with org/policy canonicalization, the **LLM decides
+# MAGIC membership** and **we assign the `event_id` deterministically** (a hash of the model's
+# MAGIC canonical event label); any signal it drops falls back to its own singleton event.
+# MAGIC
+# MAGIC `title`+`location` are the primary evidence; `date` is guidance, not a hard rule, so the
+# MAGIC same event across adjacent days merges while different-date instances stay apart —
+# MAGIC something a rigid deterministic key can't do. `event_id` + `primary_place_geoid` are added
+# MAGIC onto `silver_signals`; `silver_events` is the collapsed dimension (member/source/doc counts
+# MAGIC + a representative signal), so duplicate scraping becomes a corroboration count.
+
+# COMMAND ----------
+
+import json
+
+from go_opps import events as ev
+
+# Finest resolved place per signal (lowest level wins; unresolved ranked last) — used both
+# as the clustering `location` descriptor and for primary_place_geoid on signals/events.
+spark.sql(f"""
+CREATE OR REPLACE TEMP VIEW _signal_primary_place AS
+WITH ranked AS (
+  SELECT sp.signal_id, p.place_id, p.canonical_name, p.state,
+         row_number() OVER (
+           PARTITION BY sp.signal_id
+           ORDER BY CASE p.level WHEN 'place'  THEN 0 WHEN 'county' THEN 1
+                                 WHEN 'state'  THEN 2 WHEN 'nation' THEN 3 ELSE 4 END,
+                    p.place_id
+         ) AS rn
+  FROM {catalog}.{schema}.silver_signal_places sp
+  JOIN {catalog}.{schema}.silver_places p USING (place_id)
+)
+SELECT signal_id, place_id AS primary_place_geoid, canonical_name AS primary_place_name, state
+FROM ranked WHERE rn = 1
+""")
+
+# One descriptor per signal: title (from the source document) + location + date + type.
+descriptor_rows = spark.sql(f"""
+SELECT s.signal_id,
+       coalesce(d.title, '')                                   AS title,
+       coalesce(pp.primary_place_name, s.state)                AS location,
+       coalesce(cast(s.event_date AS string), '')              AS date,
+       s.signal_type                                           AS type
+FROM {catalog}.{schema}.silver_signals s
+LEFT JOIN {catalog}.{schema}.silver_documents d USING (document_id)
+LEFT JOIN _signal_primary_place pp USING (signal_id)
+""").collect()
+items = [
+    {"id": i, "signal_id": r["signal_id"], "title": r["title"],
+     "location": r["location"], "date": r["date"], "type": r["type"]}
+    for i, r in enumerate(descriptor_rows)
+]
+
+
+def _cluster_events(items: list[dict]) -> list[dict]:
+    """One ai_query batch groups the signals into events."""
+    if not items:
+        return []
+    resp = spark.sql(
+        f"""
+        SELECT ai_query(
+          '{event_model}',
+          concat(:instr, '\\n\\nSIGNALS:\\n', :payload),
+          failOnError => false,
+          responseFormat => :rformat
+        ) AS resp
+        """,
+        args={
+            "instr": ev.build_instruction(),
+            "payload": ev.build_payload(items),
+            "rformat": ev.response_format_json(),
+        },
+    ).collect()[0]["resp"]
+    if resp["errorMessage"]:
+        raise RuntimeError(f"event clustering ai_query failed: {resp['errorMessage']}")
+    return json.loads(resp["result"])["clusters"]
+
+
+events_rows, signal_event_rows = ev.assign_event_ids(_cluster_events(items), items)
+spark.createDataFrame(
+    events_rows or [],
+    "event_id string, canonical_label string, match_method string, match_confidence double",
+).createOrReplaceTempView("_event_labels")
+spark.createDataFrame(signal_event_rows or [], "signal_id string, event_id string") \
+    .createOrReplaceTempView("_signal_event")
+
+# Event dimension: aggregate members + a representative signal (highest confidence, lowest
+# id); event-level display fields (type/direction/place) come from that representative.
+spark.sql(f"""
+CREATE OR REPLACE TABLE {catalog}.{schema}.silver_events AS
+WITH members AS (
+  SELECT se.event_id, s.*, pp.primary_place_geoid, pp.primary_place_name
+  FROM _signal_event se
+  JOIN {catalog}.{schema}.silver_signals s USING (signal_id)
+  LEFT JOIN _signal_primary_place pp USING (signal_id)
+),
+agg AS (
+  SELECT event_id,
+         count(*)                    AS signal_count,
+         count(DISTINCT document_id) AS document_count,
+         count(DISTINCT source)      AS source_count,
+         max(confidence)             AS confidence,
+         min(event_date)             AS event_date_min,
+         max(event_date)             AS event_date_max
+  FROM members GROUP BY event_id
+),
+rep AS (
+  SELECT event_id, signal_id AS rep_signal_id, signal_type, relevance_direction,
+         primary_place_geoid, primary_place_name,
+         summary AS rep_summary, why_go AS rep_why_go, url AS rep_url
+  FROM (
+    SELECT m.*, row_number() OVER (
+             PARTITION BY event_id ORDER BY confidence DESC, signal_id) AS rn
+    FROM members m
+  ) WHERE rn = 1
+)
+SELECT a.event_id, l.canonical_label, r.signal_type, r.relevance_direction,
+       r.primary_place_geoid, r.primary_place_name,
+       a.event_date_min, a.event_date_max,
+       a.signal_count, a.document_count, a.source_count, a.confidence,
+       l.match_method, l.match_confidence,
+       r.rep_signal_id, r.rep_summary, r.rep_why_go, r.rep_url
+FROM agg a
+JOIN rep r USING (event_id)
+LEFT JOIN _event_labels l USING (event_id)
+""")
+
+# Add event_id + primary_place_geoid onto silver_signals. Staged via a scratch table so we
+# never read and overwrite silver_signals in one statement. (04 always rebuilds silver_signals
+# fresh above, so s.* has no event_id yet — this appends it exactly once per full run.)
+spark.sql(f"""
+CREATE OR REPLACE TABLE {catalog}.{schema}._stage_signals AS
+SELECT s.*, se.event_id,
+       coalesce(pp.primary_place_geoid, concat('state:', s.state)) AS primary_place_geoid
+FROM {catalog}.{schema}.silver_signals s
+LEFT JOIN _signal_event se USING (signal_id)
+LEFT JOIN _signal_primary_place pp USING (signal_id)
+""")
+spark.sql(f"CREATE OR REPLACE TABLE {catalog}.{schema}.silver_signals AS "
+          f"SELECT * FROM {catalog}.{schema}._stage_signals")
+spark.sql(f"DROP TABLE IF EXISTS {catalog}.{schema}._stage_signals")
+
+n_events = spark.table(f"{catalog}.{schema}.silver_events").count()
+n_signals = spark.table(f"{catalog}.{schema}.silver_signals").count()
+n_collapsed = spark.sql(
+    f"SELECT count(*) c FROM {catalog}.{schema}.silver_events WHERE signal_count > 1"
+).collect()[0]["c"]
+print(f"events: {n_events} (from {n_signals} signals; {n_collapsed} multi-signal events)")
+display(spark.sql(f"""
+SELECT canonical_label, signal_type, relevance_direction, primary_place_name,
+       event_date_min, event_date_max, signal_count, document_count, source_count
+FROM {catalog}.{schema}.silver_events
+WHERE signal_count > 1 ORDER BY signal_count DESC
+"""))
 
 # COMMAND ----------
 # MAGIC %md ## Sanity check — a few signals with issue + place

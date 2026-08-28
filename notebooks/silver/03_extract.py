@@ -64,7 +64,11 @@ spark.sql(
         c.document_id,
         ai_query(
           '{model}',
-          concat(:instruction, '\\n\\n---\\nTITLE: ', coalesce(d.title, ''), '\\nTEXT:\\n', c.text),
+          concat(:instruction,
+                 '\\n\\n---\\nSOURCE: ', coalesce(d.source, ''),
+                 '\\nSOURCE TYPE: ', coalesce(d.source_type, ''),
+                 '\\nTITLE: ', coalesce(d.title, ''),
+                 '\\nTEXT:\\n', c.text),
           failOnError => false,
           responseFormat => :rformat
         ) AS resp

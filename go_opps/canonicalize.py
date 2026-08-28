@@ -25,6 +25,7 @@ the deterministic-key / incremental-MERGE story (solution-design §6).
 from __future__ import annotations
 
 import json
+import re
 
 from .resolution import _hash12, _norm
 
@@ -49,6 +50,8 @@ _KIND = {
             "e.g. 'California Department of Health Care Services (DHCS)'. Bind a "
             "standalone acronym ('DHCS') to the full name when both appear."
         ),
+        # Orgs rarely carry instrument numbers; the guard would only add false splits.
+        "guard_instrument_numbers": False,
     },
     "policies": {
         "id_prefix": "pol_",
@@ -60,8 +63,74 @@ _KIND = {
             "'Supplemental Nutrition Assistance Program (SNAP)'. Treat the same bill "
             "written differently ('A.B. 2376 (Bains)', 'AB 2376') as one entity."
         ),
+        # A bill/ordinance/resolution NUMBER is a hard identity key — enforce it.
+        "guard_instrument_numbers": True,
     },
 }
+
+
+# --------------------------------------------------------------------------
+# Numbered-instrument guard (structural, no alias list).
+#
+# A bill/ordinance/resolution number is a hard identity key: two surfaces with
+# DIFFERENT numbers are DIFFERENT instruments, however similar their text. The
+# LLM occasionally fuses them (e.g. 'ORD. 2026-190' with 'ORD. 2026-191'), so we
+# split any cluster that carries more than one distinct number. This is pure
+# structure — it never merges anything, only refuses a bad merge — and is inert
+# on any surface without such a number.
+# --------------------------------------------------------------------------
+_INSTRUMENT_RE = re.compile(
+    r"(?i)\b("
+    r"s\.?b|a\.?b|h\.?b|h\.?r|s\.?c\.?r|a\.?c\.?r|s\.?j\.?r|h\.?j\.?r|s\.?r"  # bill chambers
+    r"|ordinance|resolution|ord|res|sb|ab|hb|hr|sr|a|s|h"                    # + short forms
+    r")\.?\s*(?:no\.?\s*)?(\d{1,5}(?:-\d{1,5})?)\b"                          # optional 'No.' + number(-seq)
+)
+_PREFIX_SYNONYM = {"ordinance": "ord", "resolution": "res"}
+
+
+def instrument_number(surface: str) -> str | None:
+    """Normalized numbered-instrument key, or None.
+
+    'AB 2376' / 'A.B. 2376 (Bains)' -> 'ab:2376'; 'ORD. 2026-190' -> 'ord:2026-190'.
+    Prefix is kept so same-number different-chamber bills ('SB 100' vs 'AB 100') stay
+    distinct; a surface with no such number returns None (guard does nothing).
+    """
+    m = _INSTRUMENT_RE.search(surface or "")
+    if not m:
+        return None
+    prefix = m.group(1).lower().replace(".", "")
+    prefix = _PREFIX_SYNONYM.get(prefix, prefix)
+    return f"{prefix}:{m.group(2)}"
+
+
+def _split_by_instrument(clusters: list[dict], by_id: dict[int, tuple[str, int]]) -> list[dict]:
+    """Split any cluster whose members carry >1 distinct instrument number.
+
+    Members are regrouped by number (surfaces with no number form their own group,
+    kept together); each group becomes its own cluster, its canonical name the most
+    frequent surface in the group. Clusters with 0 or 1 distinct number pass through.
+    """
+    out: list[dict] = []
+    for cl in clusters or []:
+        members = [m for m in (cl.get("member_ids") or []) if m in by_id]
+        if not members:
+            out.append(cl)
+            continue
+        groups: dict[str | None, list[int]] = {}
+        for m in members:
+            groups.setdefault(instrument_number(by_id[m][0]), []).append(m)
+        if len([k for k in groups if k is not None]) <= 1:
+            out.append(cl)
+            continue
+        for ids in groups.values():
+            rep = max(ids, key=lambda i: (by_id[i][1], len(by_id[i][0]), by_id[i][0]))
+            out.append({
+                "canonical_name": by_id[rep][0],
+                "entity_type": cl.get("entity_type", "other"),
+                "member_ids": ids,
+                "confidence": cl.get("confidence"),
+            })
+    return out
 
 
 def build_instruction(kind: str) -> str:
@@ -143,6 +212,8 @@ def assign_ids(
     """
     prefix = _KIND[kind]["id_prefix"]
     by_id = {i: (name, cnt) for i, name, cnt in items}
+    if _KIND[kind].get("guard_instrument_numbers"):
+        clusters = _split_by_instrument(clusters, by_id)
     seen: set[int] = set()
     dims: dict[str, dict] = {}
     surface_to_id: dict[str, str] = {}

@@ -87,28 +87,35 @@ ISSUE_LABEL_TO_ID: dict[str, str] = {i["label"]: i["issue_id"] for i in ISSUE_TA
 # civic/administrative types the corpus actually contains (programs, funding,
 # reports, emergencies).
 # --------------------------------------------------------------------------
-SIGNAL_TYPES: list[str] = [
-    "bill_introduced",
-    "committee_hearing",
-    "proposed_mandate",
-    "vote",
-    "amendment",
-    "funding",
-    "report_indicator",
-    "program",
-    "emergency",
-    "other",
+# Each type carries the definition the model sees (the glossary), so the schema
+# enum and the prompt are generated from ONE list and can't drift.
+SIGNAL_TYPE_DEFS: list[dict[str, str]] = [
+    {"type": "bill_introduced", "description": "A bill or legislative proposal has been formally introduced."},
+    {"type": "committee_hearing", "description": "A legislative committee hearing, briefing, or testimony session is scheduled or taking place."},
+    {"type": "proposed_mandate", "description": "A proposed requirement, obligation, or standard that organizations, agencies, or individuals would have to follow."},
+    {"type": "vote", "description": "A legislative or government vote, or a voting outcome."},
+    {"type": "amendment", "description": "A proposed or adopted change to a bill, law, regulation, budget, or policy."},
+    {"type": "funding", "description": "A grant, appropriation, budget allocation, funding increase or reduction, or other financial commitment."},
+    {"type": "report_indicator", "description": "A report, study, statistic, trend, or metric indicating the scale or direction of an issue."},
+    {"type": "program", "description": "The creation, expansion, modification, evaluation, or closure of a government or community program."},
+    {"type": "emergency", "description": "An urgent event or response — a disaster, displacement, or sudden disruption affecting children or families."},
+    {"type": "other", "description": "A GO-relevant signal that does not fit the categories above."},
 ]
+
+# Derived enum — values/order unchanged, so response_schema() is untouched.
+SIGNAL_TYPES: list[str] = [d["type"] for d in SIGNAL_TYPE_DEFS]
 
 # Direction the signal points for GO / CarePortal.
 RELEVANCE_DIRECTIONS: list[str] = ["opportunity", "risk", "watch"]
 
-# Place granularity levels (coarsest → finest).
-PLACE_LEVELS: list[str] = ["nation", "state", "county", "city"]
+# Place granularity levels (coarsest → finest). "place" is the Census settlement
+# tier (city / town / village / CDP) — it matches the gazetteer `level` and the
+# gold locality scoring, so the model's level agrees with what resolution emits.
+PLACE_LEVELS: list[str] = ["nation", "state", "county", "place"]
 
 # --------------------------------------------------------------------------
 # Gazetteer seed — the territory scope (NY / CA / VA) plus a US national row.
-# Extracted finer places (county/city) are resolved/appended against this in
+# Extracted finer places (county/place) are resolved/appended against this in
 # the signals stage. ``region`` matches the value carried on raw_issues.
 # --------------------------------------------------------------------------
 STATE_SEED: list[dict[str, str]] = [

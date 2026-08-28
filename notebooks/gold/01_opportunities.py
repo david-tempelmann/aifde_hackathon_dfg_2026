@@ -27,7 +27,7 @@ SELECT issue_id, label, description FROM {catalog}.{schema}.silver_issues
 """)
 spark.sql(f"""
 CREATE OR REPLACE TABLE {catalog}.{schema}.gold_dim_places AS
-SELECT place_id, canonical_name, state, level FROM {catalog}.{schema}.silver_places
+SELECT place_id, canonical_name, state, level, lat, lon FROM {catalog}.{schema}.silver_places
 """)
 
 # COMMAND ----------

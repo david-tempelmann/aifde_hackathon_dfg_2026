@@ -16,7 +16,24 @@ from __future__ import annotations
 
 import json
 
-from .vocab import ISSUE_LABELS, PLACE_LEVELS, RELEVANCE_DIRECTIONS, SIGNAL_TYPES
+from .vocab import (
+    ISSUE_LABELS,
+    ISSUE_TAXONOMY,
+    PLACE_LEVELS,
+    RELEVANCE_DIRECTIONS,
+    SIGNAL_TYPE_DEFS,
+    SIGNAL_TYPES,
+)
+
+
+def _glossary(defs: list[dict], key: str) -> str:
+    """Render '- <key>: <description>' lines. Prompt glossaries are generated from
+    the same vocab lists that build the schema enums, so they can never drift."""
+    return "\n".join(f"- {d[key]}: {d['description']}" for d in defs)
+
+
+_SIGNAL_TYPE_GLOSSARY = _glossary(SIGNAL_TYPE_DEFS, "type")
+_ISSUE_GLOSSARY = _glossary(ISSUE_TAXONOMY, "label")
 
 # Default extraction model. Swappable via the notebook ``model`` widget.
 # Claude is a strong instruction-follower for grounded, schema-constrained
@@ -26,7 +43,7 @@ DEFAULT_MODEL = "databricks-claude-haiku-4-5"
 # Signals below this confidence are kept in the landing table but filtered out
 # of the curated ``silver.signals`` table (surfaced/flagged decisions live in
 # gold). Overridable via widget.
-DEFAULT_CONFIDENCE_THRESHOLD = 0.5
+DEFAULT_CONFIDENCE_THRESHOLD = 0.4
 
 # How much of each chunk to hand the model (defensive cap; chunks are already
 # bounded by the chunker, this just protects against a pathological row).
@@ -37,31 +54,66 @@ MAX_INPUT_CHARS = 12000
 # model can distinguish a genuine child/family signal from generic civic news.
 # --------------------------------------------------------------------------
 INSTRUCTION = (
-    "You are an analyst for the Global Orphan (GO) Project, a nonprofit serving "
-    "vulnerable children and families. Its CarePortal platform connects local "
-    "community and church partners to meet the concrete needs of children in "
-    "crisis and families involved with the child-welfare/foster-care system.\n\n"
-    "You are given one scraped public web item (title + text) — often state or "
-    "local legislative activity, sometimes news, government notices, or social "
-    "posts. Extract exactly ONE primary signal: an atomic 'something is "
-    "happening' that a GO State Director could act on.\n\n"
-    "Judge GO-relevance strictly. It is relevant only if it plausibly bears on "
-    "children, families, foster care/child welfare, or the concrete needs GO "
-    "and CarePortal address (housing, food, healthcare, youth mental health, "
-    "education, economic support, disaster impact on families). Generic "
-    "business, sports, politics, or adult-only items are NOT relevant — set "
-    "is_go_relevant=false for those.\n\n"
+    # --- Context ---
+    "You are an analyst for the Global Orphan (GO) Project, a U.S.-focused nonprofit "
+    "serving vulnerable children and families. Its CarePortal platform connects local "
+    "community and church partners with concrete needs involving children in crisis and "
+    "families connected to the child-welfare and foster-care systems.\n\n"
+    "You are given one scraped public web item (title + text) — state or local legislation, "
+    "government activity, news, notices, reports, programs, funding, emergencies, or social "
+    "posts. Extract exactly ONE primary signal: one atomic, source-supported statement "
+    "describing something that is happening or has happened and that could matter to a GO "
+    "State Director.\n\n"
+    # --- GO relevance (the gate) ---
+    "Judge GO-relevance strictly. An item is relevant only if it plausibly concerns "
+    "children/adolescents; parents, caregivers, or families; foster care, kinship care, "
+    "adoption, reunification, or child welfare; housing stability or homelessness; food or "
+    "material needs; healthcare access; youth mental health; education access or school "
+    "support; poverty, income support, childcare cost, or family economic stability; or "
+    "emergencies/disasters affecting children or families. Generic business, sports, "
+    "elections, or adult-only content is NOT relevant unless the text establishes a clear "
+    "connection to the above. Do not force a classification merely because the source is "
+    "governmental or political. If the item is not GO-relevant, set is_go_relevant=false, "
+    "signal_type='other', relevance_direction='watch', issue_labels=[], and leave "
+    "GO-specific fields empty unless directly supported.\n\n"
+    # --- Signal selection ---
+    "Select the primary event, action, development, or condition — not a broad topic or "
+    "background. Prefer a signal that is specific (not generic), recent or clearly dated when "
+    "a date is given, and actionable for a GO State Director. If the item contains several "
+    "developments, pick the single most GO-relevant one; do NOT combine separate developments "
+    "into one signal.\n\n"
+    # --- Relevance direction ---
     "Set relevance_direction from GO's perspective:\n"
-    "- 'opportunity' — an opening to recruit CarePortal partners or build momentum;\n"
-    "- 'risk' — something that could adversely affect GO/CarePortal (e.g. a new "
-    "reporting mandate or funding cut);\n"
-    "- 'watch' — relevant context, not yet actionable.\n\n"
-    "Grounding is mandatory: supporting_quote MUST be copied verbatim from the "
-    "provided text (an exact substring), and every other field must be "
-    "supported by that text. Do not invent facts, dates, places, or "
-    "organizations. If the text is too thin to support a field, leave it empty "
-    "(empty string or empty array). confidence is your 0-1 certainty that this "
-    "is a real, correctly-classified, GO-relevant signal."
+    "- opportunity: may create an opening to recruit CarePortal partners, expand services, "
+    "coordinate a response, secure resources, or build momentum on a GO-relevant issue.\n"
+    "- risk: may negatively affect children, families, child-welfare systems, CarePortal, or "
+    "GO's ability to respond (funding cuts, service reductions, new burdensome requirements, "
+    "worsening conditions, increased unmet need).\n"
+    "- watch: relevant but not yet clearly an opportunity or risk. Do not label opportunity or "
+    "risk unless the text supports it.\n\n"
+    # --- Signal type glossary (generated from the controlled vocabulary) ---
+    "Assign exactly one signal_type:\n" + _SIGNAL_TYPE_GLOSSARY + "\n\n"
+    # --- Issue glossary (generated from the controlled taxonomy) ---
+    "Assign one or more issue_labels, most relevant first:\n" + _ISSUE_GLOSSARY + "\n\n"
+    # --- Grounding ---
+    "Grounding is mandatory. supporting_quote MUST be copied verbatim from the provided title "
+    "or text (an exact substring, including wording and punctuation) and must directly support "
+    "the signal. Every populated field must be supported by the input — do not use outside "
+    "knowledge, assumptions, or likely implications, and do not invent facts, dates, places, "
+    "organizations, policies, populations, or GO impacts. If a field is not explicitly "
+    "supported, use an empty string or empty array. The summary must describe what the source "
+    "says, not what may happen; why_go may state the GO relevance but must stay grounded and "
+    "not claim an impact the source does not establish.\n\n"
+    # --- Confidence (two axes) ---
+    "Report two scores, each between 0 and 1:\n"
+    "- source_confidence: how much the source and its supporting_quote let us TRUST the signal. "
+    "Is the source credible (an official/government notice or established news outlet warrants "
+    "more trust than an anonymous social post or promotional/speculative text), and does the "
+    "verbatim quote directly and unambiguously support the extracted claim? Low when the source "
+    "is weak, the quote is thin or off-point, or the signal leans on implication. The item's "
+    "SOURCE and SOURCE TYPE are provided with the input — factor them in.\n"
+    "- overall_confidence: your overall certainty that this is a real, correctly-extracted, "
+    "GO-relevant signal. Do not raise it merely because the topic is generally relevant to GO."
 )
 
 
@@ -76,10 +128,14 @@ def response_schema() -> dict:
         "type": "object",
         "properties": {
             "name": {"type": "string", "description": "Place name as written in the text."},
-            "level": {"type": "string", "enum": PLACE_LEVELS},
+            "level": {
+                "type": "string",
+                "enum": PLACE_LEVELS,
+                "description": "Granularity: 'place' = a city/town/village.",
+            },
             "state": {
                 "type": "string",
-                "description": "Two-letter state (NY/CA/VA/US) if determinable, else empty.",
+                "description": "Two-letter USPS state code (e.g. CA, TX, NY), or US for national scope, if determinable, else empty.",
             },
         },
         "required": ["name", "level", "state"],
@@ -126,7 +182,16 @@ def response_schema() -> dict:
                 "type": "string",
                 "description": "One line: why this matters to GO / CarePortal.",
             },
-            "confidence": {"type": "number"},
+            # Two confidence axes (0-1). overall_confidence is the pipeline anchor
+            # (drives the gate + ranking); source_confidence is a trust diagnostic.
+            "source_confidence": {
+                "type": "number",
+                "description": "Source credibility + how well the quote supports the signal.",
+            },
+            "overall_confidence": {
+                "type": "number",
+                "description": "Overall certainty this is a real, GO-relevant, correctly-extracted signal.",
+            },
         },
         "required": [
             "is_go_relevant",
@@ -141,7 +206,8 @@ def response_schema() -> dict:
             "event_date",
             "supporting_quote",
             "why_go",
-            "confidence",
+            "source_confidence",
+            "overall_confidence",
         ],
         "additionalProperties": False,
     }
