@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from .. import config, db, queries
+from .. import db, queries
 
 router = APIRouter()
 
@@ -23,7 +23,5 @@ def overview():
 @router.get("/stats")
 def stats():
     """Total signal count for the header badge."""
-    total = db.cached_query(
-        "stats_total", f"select count(*)::int as n from {config.GOLD_SCHEMA}.opportunity_cards"
-    )
+    total = db.cached_query("stats_total", queries.STATS_QUERY)
     return {"total": total[0]["n"] if total else 0}

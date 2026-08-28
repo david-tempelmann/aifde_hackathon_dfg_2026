@@ -6,6 +6,10 @@
 resources:
   apps:
     go_outreach_app:
+      # Pinned app name → stable service principal across redeploys. Renaming the
+      # app recreates it with a fresh SP, which drops the warehouse + schema grants
+      # the Genie Deep-Dive flow needs. If you must rename, rerun `make grant`
+      # (scripts/grant_app_permissions.py) to re-apply them to the new SP.
       name: brickhearts-goproject-outreach
       description: "GO Project outreach-insights dashboard — cited, region-scoped signals."
       source_code_path: ../app
