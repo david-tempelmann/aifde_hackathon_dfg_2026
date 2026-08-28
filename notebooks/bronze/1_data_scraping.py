@@ -1015,7 +1015,7 @@ else:
 from pyspark.sql import functions as F
 
 PERSIST = True
-CATALOG, SCHEMA, TABLE = "ai_fde_hackathon_catalog", "brickhearts", "bronze_tmp_raw_issues"
+CATALOG, SCHEMA, TABLE = "ai_fde_hackathon_catalog", "brickhearts", "bronze_raw_issues"
 FQN = f"{CATALOG}.{SCHEMA}.{TABLE}"
 
 # The URL is the primary key. Column order defines the expected table schema (used by self-heal).
