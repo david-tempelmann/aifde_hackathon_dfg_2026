@@ -1,0 +1,38 @@
+# Daily bronze data-scraping job.
+# Runs notebooks/bronze/1_data_scraping.py, which pulls the latest news / RSS /
+# government (agendas + minutes) / weather / FEMA sources and MERGE-upserts them into
+# `${var.catalog}.${var.schema}.bronze_tmp_raw_issues` (idempotent — safe to run daily).
+resources:
+  jobs:
+    bronze_data_scraping:
+      name: ${bundle.name}-bronze_data_scraping
+      # Daily at 06:00 America/New_York. In the `dev` target (mode: development) the
+      # bundle auto-PAUSES schedules; deploy to a prod-style target to have it fire.
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: America/New_York
+        pause_status: UNPAUSED
+      # Serial daily batch: never overlap runs, and cap runtime.
+      max_concurrent_runs: 1
+      timeout_seconds: 5400
+      queue:
+        enabled: true
+      email_notifications:
+        on_failure:
+          - julie.nguyen@databricks.com
+      tasks:
+        - task_key: data_scraping
+          notebook_task:
+            notebook_path: ../notebooks/bronze/1_data_scraping.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+          # Serverless environment that installs the go_opps wheel (matches example_job).
+          # The notebook also `%pip install`s trafilatura + pypdf at runtime.
+          environment_key: default
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl
