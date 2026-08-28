@@ -1,0 +1,25 @@
+# Scheduled refresh of the Lakebase Gold synced tables. They use SNAPSHOT
+# scheduling (no auto-run), so this job triggers them all — timed for shortly
+# after the morning UC Gold rebuild. A routine snapshot reloads in place, so the
+# app SP read grant persists (only a structural recreate needs grant_app_sp.sql
+# re-run).
+resources:
+  jobs:
+    gold_refresh:
+      name: ${bundle.name}-gold-refresh
+      tasks:
+        - task_key: refresh_synced_tables
+          notebook_task:
+            notebook_path: ../notebooks/refresh_gold_sync.py
+          environment_key: default
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+      # Daily, 13:00 UTC — adjust to run just after the Gold build completes.
+      schedule:
+        quartz_cron_expression: "0 0 13 * * ?"
+        timezone_id: UTC
+        pause_status: UNPAUSED
+      queue:
+        enabled: true

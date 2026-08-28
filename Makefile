@@ -1,10 +1,12 @@
 # Makefile for the GO Project Databricks Asset Bundle.
 # Override the target env on any command, e.g. `make deploy TARGET=prod`.
 TARGET ?= dev
-# App resource key(s) to start after deploy. Set once we define an app, e.g. APP=go_opps_app
-APP ?=
+# CLI auth profile for the target workspace.
+PROFILE ?= fe-vm-ai-fde-hackathon
+# App resource key started after deploy by `deploy-all`.
+APP ?= go_outreach_app
 
-.PHONY: help install deploy deploy-all
+.PHONY: help install app-build deploy deploy-all
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -13,13 +15,15 @@ help: ## Show available commands
 install: ## Create the venv and install deps with uv
 	uv sync --extra dev
 
+app-build: ## Install frontend deps and build the React app (app/frontend/dist)
+	cd app/frontend && npm install && npm run build
 
-deploy: ## Deploy the bundle to the target env (default: dev)
-	databricks bundle deploy -t $(TARGET)
+deploy: app-build ## Build the frontend, then deploy the bundle to the target env (default: dev)
+	databricks bundle deploy -t $(TARGET) -p $(PROFILE)
 
-deploy-all: deploy ## Deploy, then start the app(s) via `bundle run`
+deploy-all: deploy ## Deploy, then start the app via `bundle run`
 	@if [ -z "$(APP)" ]; then \
 		echo "No APP set — deployed only. Start an app with: make deploy-all APP=<app_key>"; \
 	else \
-		databricks bundle run -t $(TARGET) $(APP); \
+		databricks bundle run -t $(TARGET) -p $(PROFILE) $(APP); \
 	fi

@@ -1,0 +1,7 @@
+# Runtime dependencies for the Databricks App builder (pip). Kept in sync with
+# pyproject.toml, which is used for local development with uv.
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+psycopg[binary,pool]==3.3.4
+databricks-sdk==0.133.0
+pydantic==2.13.4
