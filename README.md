@@ -2,6 +2,10 @@
 
 GO Project outreach-insights solution, built as a [Databricks Asset Bundle](https://docs.databricks.com/dev-tools/bundles/index.html).
 
+> 📊 **[Project overview](docs/project-overview.html)** — a diagram-focused walkthrough of the whole
+> solution: end-to-end pipeline, ingestion, entity extraction & resolution, the app layer, evaluation,
+> and the data-model decisions. Open it in a browser.
+
 ## Layout
 
 - `notebooks/` — Databricks notebooks (`.py` source format for clean diffs).
