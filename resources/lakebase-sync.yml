@@ -62,3 +62,26 @@ resources:
       new_pipeline_spec:
         storage_catalog: ai_fde_hackathon_catalog
         storage_schema: brickhearts_sync
+    # Knowledge-graph projection — powers the Hot Issues mini sub-graph.
+    gold_graph_nodes:
+      synced_table_id: ai_fde_hackathon_catalog.gold.graph_nodes
+      branch: ${resources.postgres_branches.production.name}
+      postgres_database: databricks_postgres
+      source_table_full_name: ai_fde_hackathon_catalog.brickhearts.gold_graph_nodes
+      primary_key_columns: [node_id]
+      scheduling_policy: SNAPSHOT
+      create_database_objects_if_missing: true
+      new_pipeline_spec:
+        storage_catalog: ai_fde_hackathon_catalog
+        storage_schema: brickhearts_sync
+    gold_graph_edges:
+      synced_table_id: ai_fde_hackathon_catalog.gold.graph_edges
+      branch: ${resources.postgres_branches.production.name}
+      postgres_database: databricks_postgres
+      source_table_full_name: ai_fde_hackathon_catalog.brickhearts.gold_graph_edges
+      primary_key_columns: [edge_id]
+      scheduling_policy: SNAPSHOT
+      create_database_objects_if_missing: true
+      new_pipeline_spec:
+        storage_catalog: ai_fde_hackathon_catalog
+        storage_schema: brickhearts_sync

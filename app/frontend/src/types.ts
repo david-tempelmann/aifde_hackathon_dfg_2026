@@ -93,6 +93,104 @@ export interface TranslateResponse {
   model: string;
 }
 
+export type FindingCategory =
+  | "hot_place"
+  | "named_responder"
+  | "related_issue"
+  | "upcoming_event"
+  | "funding_hook"
+  | "crisis_signal";
+
+export interface Finding {
+  category: FindingCategory | string;
+  subject: string;
+  detail: string | null;
+  metric: number | null;
+  event_date: string | null;
+  source: string | null;
+  source_url: string | null;
+  quote: string | null;
+  finding: string;
+  so_what: string;
+}
+
+export interface DeepDivePayload {
+  topic: string;
+  region: string;
+  card_context: Record<string, string | null>;
+  generated_at: string;
+  genie_space_id: string;
+  genie_status: string;
+  row_count: number;
+  headline: string;
+  findings: Finding[];
+  who_to_recruit: string[];
+  recommended_play: string;
+  watch_outs: string;
+  narrative: string;
+  cached?: boolean;
+}
+
+export interface DeepDiveOptions {
+  topics: string[];
+  regions: string[];
+}
+
+export interface DeepDiveQuery {
+  topic: string;
+  region?: string;
+  signal_count?: string;
+  signal_mix?: string;
+  sources?: string;
+  key_dates?: string;
+  latest?: string;
+  refresh?: boolean;
+}
+
+export interface HotEdge {
+  predicate: string;
+  dst_type: string;
+  dst_label: string;
+  conf: number;
+}
+
+export interface HotSignal {
+  signal_id: string;
+  summary: string | null;
+  dir: Direction | null;
+  date: string | null;
+  type: string | null;
+  source: string | null;
+  url: string | null;
+  why_go: string | null;
+  edges: HotEdge[];
+}
+
+export interface HotIssueCard {
+  rank: number;
+  issue: string;
+  place: string;
+  state: string;
+  level: string;
+  n: number;
+  n_opp: number;
+  n_risk: number;
+  n_watch: number;
+  sources: string[];
+  heat: number;
+  top_priority: number;
+  latest: string | null;
+  nextup: string | null;
+  dom: Direction | string;
+  components: { priority: number; volume: number; recency: number; corroboration: number };
+  signals: HotSignal[];
+}
+
+export interface HotIssuesResponse {
+  count: number;
+  cards: HotIssueCard[];
+}
+
 export interface SignalQuery {
   state?: string;
   direction?: string;

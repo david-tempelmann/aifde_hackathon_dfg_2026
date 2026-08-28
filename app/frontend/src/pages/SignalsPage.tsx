@@ -27,8 +27,10 @@ export default function SignalsPage() {
     const init = { ...EMPTY_FILTERS };
     const st = searchParams.get("state");
     const issue = searchParams.get("issue");
+    const direction = searchParams.get("direction");
     if (st) init.states = [st];
     if (issue) init.issues = [issue];
+    if (direction) init.directions = [direction];
     return init;
   });
   const [sort, setSort] = useState("priority");

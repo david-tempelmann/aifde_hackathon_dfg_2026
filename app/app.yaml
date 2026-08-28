@@ -20,3 +20,6 @@ env:
   # SQL warehouse for ai_translate.
   - name: DATABRICKS_WAREHOUSE_ID
     value: "41659c95dacd3bf0"
+  # Genie space backing the Topic Deep-Dive page (repo-owned; see genie/).
+  - name: GENIE_SPACE_ID
+    value: "01f1a2e161fa111791babad65ae8955d"

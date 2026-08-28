@@ -1,7 +1,11 @@
 import type {
+  DeepDiveOptions,
+  DeepDivePayload,
+  DeepDiveQuery,
   DraftOption,
   DraftResponse,
   FilterOptions,
+  HotIssuesResponse,
   Language,
   OverviewResponse,
   SignalQuery,
@@ -35,6 +39,22 @@ export function fetchOverview(): Promise<OverviewResponse> {
 
 export function fetchStats(): Promise<{ total: number }> {
   return getJSON<{ total: number }>("/api/stats");
+}
+
+export function fetchHotIssues(limit = 4): Promise<HotIssuesResponse> {
+  return getJSON<HotIssuesResponse>(`/api/hotissues?limit=${limit}`);
+}
+
+export function fetchDeepDiveOptions(): Promise<DeepDiveOptions> {
+  return getJSON<DeepDiveOptions>("/api/deepdive/options");
+}
+
+export function fetchDeepDive(query: DeepDiveQuery): Promise<DeepDivePayload> {
+  const params = new URLSearchParams();
+  Object.entries(query).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== "") params.set(k, String(v));
+  });
+  return getJSON<DeepDivePayload>(`/api/deepdive?${params.toString()}`);
 }
 
 export function fetchDraftOptions(): Promise<{ variants: DraftOption[]; defaults: string[] }> {

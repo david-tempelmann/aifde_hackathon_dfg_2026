@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 from server import db
 from server.db import pool
-from server.routes import draft, overview, saved, signals, translate
+from server.routes import deepdive, draft, hotissues, overview, saved, signals, translate
 
 
 @asynccontextmanager
@@ -39,6 +39,8 @@ app.include_router(overview.router, prefix="/api")
 app.include_router(draft.router, prefix="/api")
 app.include_router(translate.router, prefix="/api")
 app.include_router(saved.router, prefix="/api")
+app.include_router(deepdive.router, prefix="/api")
+app.include_router(hotissues.router, prefix="/api")
 
 
 @app.get("/api/health")

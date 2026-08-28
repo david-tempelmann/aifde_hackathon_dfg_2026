@@ -1,0 +1,216 @@
+{
+  "title": "GO Outreach \u2014 Topic Deep-Dive",
+  "description": "Certified findings for the app's Deep Dive page (repo-owned). Forked from the BrickHearts Outreach Topic Agent; adds source_url + quote so findings deep-link to sources.",
+  "parent_path": "/Users/shreya.ruparelia@databricks.com/genie_spaces",
+  "warehouse_id": "41659c95dacd3bf0",
+  "serialized_space": {
+    "version": 2,
+    "config": {
+      "sample_questions": [
+        {
+          "id": "10000000000000000000000000000001",
+          "question": [
+            "What are the hottest issues right now, by issue and state?"
+          ]
+        },
+        {
+          "id": "10000000000000000000000000000002",
+          "question": [
+            "For Housing stability & homelessness, which locations, organizations, policies and affected populations are most connected?"
+          ]
+        },
+        {
+          "id": "10000000000000000000000000000003",
+          "question": [
+            "Which issues are most related to each other through shared places?"
+          ]
+        },
+        {
+          "id": "10000000000000000000000000000004",
+          "question": [
+            "Which organizations could we recruit as responders for Family preservation & foster care in Virginia?"
+          ]
+        },
+        {
+          "id": "10000000000000000000000000000005",
+          "question": [
+            "Which opportunities have an event date in the next 45 days, ranked by priority?"
+          ]
+        },
+        {
+          "id": "10000000000000000000000000000006",
+          "question": [
+            "Return the canonical findings for the topic \"Housing stability & homelessness\" in VA."
+          ]
+        }
+      ]
+    },
+    "data_sources": {
+      "tables": [
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.gold_dim_issues"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.gold_dim_places"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.gold_opportunity_cards"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.gold_opportunity_citations"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.gold_opportunity_details"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.silver_documents"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.silver_issues"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.silver_organizations"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.silver_places"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.silver_policies"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.silver_signal_issues"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.silver_signal_orgs"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.silver_signal_places"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.silver_signal_policies"
+        },
+        {
+          "identifier": "ai_fde_hackathon_catalog.brickhearts.silver_signals"
+        }
+      ]
+    },
+    "instructions": {
+      "text_instructions": [
+        {
+          "id": "30000000000000000000000000000001",
+          "content": [
+            "PERSONA: You are the data analyst for The Global Orphan Project's CarePortal outreach. Users are State Directors who recruit community responders (churches, nonprofits, businesses, agencies) to help children and families in crisis. Answer with outreach in mind: where the need is, who to contact, and what is time-sensitive.\n\nWHAT EACH TABLE IS:\n- gold_opportunity_cards: one row per opportunity (a scored signal). Columns: issue_label, state, place_name, relevance_direction (opportunity/risk/watch), signal_type, event_date, confidence, priority_score, source_name. USE THIS for 'hot issues', rankings, counts, and priority.\n- gold_opportunity_details: per-opportunity summary, why_it_matters, recommended_action, affected_populations, and sub-scores impact_magnitude/timing_urgency/locality/evidence_confidence.\n- gold_opportunity_citations: quote + source_url per opportunity (use to cite evidence).\n- silver_signals: the underlying signals (signal_id, summary, why_go, quote, url, source, event_date, confidence, relevance_direction, signal_type, state, affected_populations).\n- Entity links (signal_id -> entity): silver_signal_issues(issue_id), silver_signal_places(place_id), silver_signal_orgs(org_id), silver_signal_policies(policy_id).\n- Entity dimensions: silver_issues(issue_id,label), silver_places(place_id,canonical_name,state,level), silver_organizations(org_id,canonical_name,entity_type), silver_policies(policy_id,canonical_name).\n\nHOW TO ANSWER COMMON QUESTIONS:\n- 'Hottest issues' / rollup: GROUP BY issue_label, state on gold_opportunity_cards; rank by signal count and max priority_score.\n- 'What connects to a topic (issue)': resolve the issue's signals via silver_signal_issues+silver_issues(label=...), then join to silver_signal_places/_orgs/_policies (+ dimension tables) and explode silver_signals.affected_populations. Report top entities by distinct signal count.\n- 'Which issues relate to each other': two issues are related when a single signal is tagged with both (self-join silver_signal_issues on signal_id) OR when their signals share a place. Report pair counts.\n- 'Who to recruit' / responders: list silver_organizations connected to that issue's signals, grouped by entity_type (nonprofit/government_agency/company/legislative_body).\n- 'Upcoming / time-sensitive': filter gold_opportunity_cards WHERE event_date >= current_date() (or a window); rank by priority_score.\n\nDEFINITIONS & GOTCHAS:\n- relevance_direction: opportunity (act to help), risk (threat to families), watch (background/monitor).\n- A signal can map to MULTIPLE issues (silver_signal_issues has ~168 rows for ~105 signals) \u2014 that multi-tagging is itself the issue-to-issue relationship.\n- state='OTHER' means national or unresolved location; exclude it from state-specific rankings unless asked.\n- Always surface the source and event_date so outreach can cite it. Prefer distinct signal counts when aggregating entities.\n\nCANONICAL FINDINGS (TRIGGER: any request phrased 'Return the canonical findings for the topic \"<TOPIC>\"', optionally '... in <REGION>', plus any card context that follows; also any 'interesting findings' / 'analysis' / 'next steps for <topic>' request): RUN THE CERTIFIED FINDINGS QUERY and return its rows AS-IS \u2014 do not reshape, pivot, or collapse into other columns. The query returns ONE result set with columns finding_type, subject, detail, metric, event_date, source, source_url, quote. finding_type is one of:\n- hot_place: subject=place, detail=state, metric=distinct signals (reveals where need concentrates \u2014 both policy hubs and grassroots crisis clusters).\n- named_responder: subject=organization, detail=entity_type, metric=distinct signals \u2014 ONLY community responders (entity_type NOT IN government_agency/legislative_body): nonprofits, churches/faith orgs, companies, schools. These are who CarePortal recruits.\n- related_issue: subject=another issue, metric=shared signal count (what else these families face).\n- upcoming_event: subject=opportunity title, detail=place, metric=priority 0-100, event_date, source (the dated hearing/decision windows).\n- funding_hook: subject=signal summary (with dollar amount/ordinance), metric=confidence 0-100, event_date, source (money already in play + named recipients).\n- crisis_signal: subject=signal summary, detail=state, metric=confidence 0-100, event_date, source \u2014 risk/watch signals showing where families are in acute need NOW.\nCITATIONS (REQUIRED): for single-signal rows (upcoming_event, funding_hook, crisis_signal), populate source_url from the underlying silver_signals.url (or gold_opportunity_citations.source_url) and quote from silver_signals.quote (or the citation quote), so the app can deep-link back to the exact source. For aggregate rows (hot_place, related_issue, named_responder), set source_url and quote to NULL. NEVER truncate subject, summary, or quote \u2014 return the complete text.\nResolve the topic's signals via silver_signal_issues + silver_issues(label=<TOPIC>). APPLY THE REGION to BOTH the topic CTE (s.state='<REGION>') AND the upcoming_event branch (c.state='<REGION>'). If no region is given, drop both state filters. The backend serializes these rows into the findings JSON, so consistent columns matter more than prose \u2014 always return the full result set, then add a short narrative highlighting the single best next step. Do NOT ask the user any follow-up or clarifying questions and do NOT offer options or choices \u2014 end the narrative with that single best next step and nothing more."
+          ]
+        }
+      ],
+      "example_question_sqls": [
+        {
+          "id": "20000000000000000000000000000001",
+          "question": [
+            "What are the hottest issues right now, by issue and state?"
+          ],
+          "sql": [
+            "SELECT issue_label, state, count(*) AS signals,\n",
+            "       round(max(priority_score),2) AS top_priority,\n",
+            "       sum(CASE WHEN relevance_direction='opportunity' THEN 1 ELSE 0 END) AS opportunities,\n",
+            "       sum(CASE WHEN relevance_direction='risk' THEN 1 ELSE 0 END) AS risks,\n",
+            "       max(event_date) AS latest\n",
+            "FROM ai_fde_hackathon_catalog.brickhearts.gold_opportunity_cards\n",
+            "GROUP BY issue_label, state ORDER BY signals DESC, top_priority DESC"
+          ]
+        },
+        {
+          "id": "20000000000000000000000000000002",
+          "question": [
+            "For a given issue, which organizations are most connected?Who could we recruit for housing?"
+          ],
+          "sql": [
+            "WITH topic AS (\n",
+            "  SELECT si.signal_id FROM ai_fde_hackathon_catalog.brickhearts.silver_signal_issues si\n",
+            "  JOIN ai_fde_hackathon_catalog.brickhearts.silver_issues i ON si.issue_id=i.issue_id\n",
+            "  WHERE i.label = 'Housing stability & homelessness')\n",
+            "SELECT o.canonical_name, o.entity_type, count(DISTINCT so.signal_id) AS n\n",
+            "FROM ai_fde_hackathon_catalog.brickhearts.silver_signal_orgs so JOIN topic t ON so.signal_id=t.signal_id\n",
+            "JOIN ai_fde_hackathon_catalog.brickhearts.silver_organizations o ON so.org_id=o.org_id\n",
+            "GROUP BY o.canonical_name, o.entity_type ORDER BY n DESC"
+          ]
+        },
+        {
+          "id": "20000000000000000000000000000003",
+          "question": [
+            "Which issues are related through co-tagged signals?"
+          ],
+          "sql": [
+            "WITH si AS (SELECT s.signal_id, i.label FROM ai_fde_hackathon_catalog.brickhearts.silver_signal_issues s\n",
+            "  JOIN ai_fde_hackathon_catalog.brickhearts.silver_issues i ON s.issue_id=i.issue_id)\n",
+            "SELECT a.label AS issue_a, b.label AS issue_b, count(DISTINCT a.signal_id) AS shared_signals\n",
+            "FROM si a JOIN si b ON a.signal_id=b.signal_id AND a.label < b.label\n",
+            "GROUP BY a.label, b.label ORDER BY shared_signals DESC"
+          ]
+        },
+        {
+          "id": "20000000000000000000000000000004",
+          "question": [
+            "Return the canonical findings for the topic \"Housing stability & homelessness\" in VA."
+          ],
+          "sql": [
+            "WITH topic AS (\n",
+            "  SELECT DISTINCT s.signal_id, s.state, s.relevance_direction, s.signal_type,\n",
+            "         s.event_date, s.source, s.summary, s.confidence\n",
+            "  FROM ai_fde_hackathon_catalog.brickhearts.silver_signal_issues si\n",
+            "  JOIN ai_fde_hackathon_catalog.brickhearts.silver_issues i ON si.issue_id = i.issue_id\n",
+            "  JOIN ai_fde_hackathon_catalog.brickhearts.silver_signals s ON s.signal_id = si.signal_id\n",
+            "  WHERE i.label = 'Housing stability & homelessness' AND s.state = 'VA'\n",
+            ")\n",
+            "SELECT * FROM (\n",
+            "  SELECT 'hot_place' AS finding_type, p.canonical_name AS subject, p.state AS detail,\n",
+            "         count(DISTINCT sp.signal_id) AS metric, CAST(NULL AS DATE) AS event_date, CAST(NULL AS STRING) AS source\n",
+            "  FROM ai_fde_hackathon_catalog.brickhearts.silver_signal_places sp JOIN topic t ON sp.signal_id = t.signal_id\n",
+            "  JOIN ai_fde_hackathon_catalog.brickhearts.silver_places p ON sp.place_id = p.place_id\n",
+            "  WHERE p.canonical_name IS NOT NULL\n",
+            "  GROUP BY p.canonical_name, p.state ORDER BY metric DESC LIMIT 4\n",
+            ")\n",
+            "UNION ALL SELECT * FROM (\n",
+            "  SELECT 'named_responder', o.canonical_name, o.entity_type,\n",
+            "         count(DISTINCT so.signal_id), CAST(NULL AS DATE), CAST(NULL AS STRING)\n",
+            "  FROM ai_fde_hackathon_catalog.brickhearts.silver_signal_orgs so JOIN topic t ON so.signal_id = t.signal_id\n",
+            "  JOIN ai_fde_hackathon_catalog.brickhearts.silver_organizations o ON so.org_id = o.org_id\n",
+            "  WHERE o.entity_type NOT IN ('government_agency', 'legislative_body')\n",
+            "  GROUP BY o.canonical_name, o.entity_type ORDER BY 4 DESC, o.canonical_name LIMIT 6\n",
+            ")\n",
+            "UNION ALL SELECT * FROM (\n",
+            "  SELECT 'related_issue', i2.label, CAST(NULL AS STRING),\n",
+            "         count(DISTINCT si2.signal_id), CAST(NULL AS DATE), CAST(NULL AS STRING)\n",
+            "  FROM ai_fde_hackathon_catalog.brickhearts.silver_signal_issues si2 JOIN topic t ON si2.signal_id = t.signal_id\n",
+            "  JOIN ai_fde_hackathon_catalog.brickhearts.silver_issues i2 ON si2.issue_id = i2.issue_id\n",
+            "  WHERE i2.label <> 'Housing stability & homelessness'\n",
+            "  GROUP BY i2.label ORDER BY 4 DESC LIMIT 4\n",
+            ")\n",
+            "UNION ALL SELECT * FROM (\n",
+            "  SELECT 'upcoming_event', c.title, c.place_name,\n",
+            "         CAST(round(c.priority_score * 100) AS INT), c.event_date, c.source_name\n",
+            "  FROM ai_fde_hackathon_catalog.brickhearts.gold_opportunity_cards c\n",
+            "  WHERE c.issue_label = 'Housing stability & homelessness' AND c.state = 'VA'\n",
+            "    AND c.event_date >= current_date()\n",
+            "  ORDER BY c.event_date ASC LIMIT 4\n",
+            ")\n",
+            "UNION ALL SELECT * FROM (\n",
+            "  SELECT 'funding_hook', left(t.summary, 150), t.source,\n",
+            "         CAST(round(t.confidence * 100) AS INT), t.event_date, t.source\n",
+            "  FROM topic t\n",
+            "  WHERE t.signal_type IN ('funding', 'bill_introduced')\n",
+            "  ORDER BY t.confidence DESC, t.event_date DESC LIMIT 3\n",
+            ")\n",
+            "UNION ALL SELECT * FROM (\n",
+            "  SELECT 'crisis_signal', left(t.summary, 150), t.state,\n",
+            "         CAST(round(t.confidence * 100) AS INT), t.event_date, t.source\n",
+            "  FROM topic t\n",
+            "  WHERE t.relevance_direction IN ('risk', 'watch')\n",
+            "  ORDER BY t.event_date DESC LIMIT 3\n",
+            ")"
+          ]
+        }
+      ]
+    }
+  }
+}
