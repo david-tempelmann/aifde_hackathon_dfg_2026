@@ -1,0 +1,20 @@
+# Gold-layer pipeline: silver star -> serving tables (opportunity cards/details/citations + dims)
+# matching the Lakebase `gold` schema. Serverless; installs the go_opps wheel.
+resources:
+  jobs:
+    gold_pipeline:
+      name: ${bundle.name}-gold_pipeline
+      tasks:
+        - task_key: opportunities
+          notebook_task:
+            notebook_path: ../notebooks/gold/01_opportunities.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+          environment_key: default
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl
