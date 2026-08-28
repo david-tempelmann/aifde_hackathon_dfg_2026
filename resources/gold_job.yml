@@ -12,6 +12,15 @@ resources:
               catalog: ${var.catalog}
               schema: ${var.schema}
           environment_key: default
+        - task_key: graph
+          depends_on:
+            - task_key: opportunities
+          notebook_task:
+            notebook_path: ../notebooks/gold/02_graph.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+          environment_key: default
       environments:
         - environment_key: default
           spec:
