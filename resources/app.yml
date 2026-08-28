@@ -1,0 +1,32 @@
+# GO Project outreach-insights Databricks App (FastAPI + React).
+# Runtime command comes from app/app.yaml; this resource tells the bundle where
+# the source lives and attaches the app to the autoscaling Lakebase (Contract B
+# Gold) via the `postgres` block. The attach injects PG* env vars and keeps the
+# app SP as the owner (see resources/lakebase.yml).
+resources:
+  apps:
+    go_outreach_app:
+      name: brickhearts-goproject-outreach
+      description: "GO Project outreach-insights dashboard — cited, region-scoped signals."
+      source_code_path: ../app
+      permissions:
+        - group_name: brickhearts
+          level: CAN_MANAGE
+      resources:
+        - name: lakebase
+          description: "Autoscaling Lakebase holding the Gold serving tables (Contract B)."
+          postgres:
+            # implicit production branch + databricks_postgres database (hyphenated id in path)
+            branch: ${resources.postgres_branches.production.name}
+            database: ${resources.postgres_projects.lakebase.name}/branches/production/databases/databricks-postgres
+            permission: CAN_CONNECT_AND_CREATE
+        - name: llm
+          description: "Foundation Model endpoint for grounded outreach drafts + translation scoring."
+          serving_endpoint:
+            name: databricks-claude-sonnet-4-5
+            permission: CAN_QUERY
+        - name: warehouse
+          description: "SQL warehouse for ai_translate (Databricks SQL AI function)."
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE

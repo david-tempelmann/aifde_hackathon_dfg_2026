@@ -1,0 +1,22 @@
+# Databricks App configuration for the GO Project outreach-insights app.
+# The app serves the built React frontend and a FastAPI backend that reads the
+# Contract B Gold tables from Lakebase. The `postgres` app-resource attach (see
+# resources/app.yml) injects PGHOST/PGUSER/PGPORT/PGDATABASE/PGSSLMODE, so no DB
+# env vars are needed here.
+command:
+  - "python"
+  - "-m"
+  - "uvicorn"
+  - "app:app"
+  - "--host"
+  - "0.0.0.0"
+  - "--port"
+  - "8000"
+
+env:
+  # Foundation Model endpoint for the outreach-draft action (overridable).
+  - name: SERVING_ENDPOINT
+    value: "databricks-claude-sonnet-4-5"
+  # SQL warehouse for ai_translate.
+  - name: DATABRICKS_WAREHOUSE_ID
+    value: "41659c95dacd3bf0"

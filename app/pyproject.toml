@@ -1,0 +1,15 @@
+[project]
+name = "go-outreach-app"
+version = "0.1.0"
+description = "GO Project outreach-insights Databricks App (FastAPI + React)."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "psycopg[binary,pool]>=3.2",
+    "databricks-sdk>=0.30",
+    "pydantic>=2.7",
+]
+
+[tool.uv]
+package = false

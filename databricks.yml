@@ -3,9 +3,21 @@
 bundle:
   name: aifde_hackathon_dfg_2026
 
-# Modular resource definitions (jobs, pipelines, etc.) live under resources/.
+# Modular resource definitions (jobs, pipelines, apps, etc.) live under resources/.
 include:
   - resources/*.yml
+
+# Keep heavy/local-only artifacts out of the workspace upload, but force-include
+# the app's built frontend — `dist/` is gitignored (Vite + Python .gitignore),
+# and `sync.include` overrides that so the App can serve the SPA.
+sync:
+  include:
+    - "app/frontend/dist/**"
+  exclude:
+    - "app/frontend/node_modules"
+    - "app/.venv"
+    - "**/__pycache__"
+    - "**/.DS_Store"
 
 # Build the go_opps package into a wheel that jobs can attach as a library.
 artifacts:
@@ -22,6 +34,9 @@ variables:
   schema:
     description: Schema (within `catalog`) used by the bundle.
     default: brickhearts
+  warehouse_id:
+    description: SQL warehouse the app queries for ai_translate.
+    default: 41659c95dacd3bf0
 
 targets:
   dev:

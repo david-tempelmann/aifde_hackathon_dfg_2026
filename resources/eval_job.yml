@@ -1,0 +1,35 @@
+# Offline silver-layer evaluation. Off the critical path — samples the tables the
+# silver pipeline already produced and scores each kept signal with Databricks LLM
+# judges (grounding + completeness) via mlflow.genai.evaluate. Results land in an
+# MLflow experiment. Run ad hoc:
+#   databricks bundle run silver_eval -t dev -p hackathon
+resources:
+  jobs:
+    silver_eval:
+      name: ${bundle.name}-silver_eval
+      # Run-time knobs. Override e.g. --params judge_model=databricks-claude-haiku-4-5
+      parameters:
+        - name: judge_model
+          default: databricks-claude-sonnet-4-5
+        - name: sample_size
+          default: "40"   # 0 = every signal
+      tasks:
+        - task_key: grounding_completeness
+          notebook_task:
+            notebook_path: ../notebooks/eval/grounding_eval.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              judge_model: "{{job.parameters.judge_model}}"
+              sample_size: "{{job.parameters.sample_size}}"
+          environment_key: default
+
+      # Serverless environment. The notebook %pip-installs mlflow itself; the go_opps
+      # wheel is attached so the completeness judge can read the real extraction output
+      # signature (go_opps.extraction.response_schema) instead of a hard-coded field list.
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "4"
+            dependencies:
+              - ../dist/*.whl
