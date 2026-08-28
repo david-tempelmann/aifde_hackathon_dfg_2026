@@ -11,8 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-// Map an issue label to a representative icon (keyword match, with a fallback),
-// so the feed is scannable and less text-heavy.
+// Issue label → representative icon (keyword match, with a fallback).
 export function issueIcon(label: string | null | undefined): LucideIcon {
   const l = (label ?? "").toLowerCase();
   if (l.includes("housing") || l.includes("homeless") || l.includes("eviction") || l.includes("shelter")) return Home;
@@ -26,8 +25,7 @@ export function issueIcon(label: string | null | undefined): LucideIcon {
   return Tag;
 }
 
-// A distinct colour per issue category (Tailwind text-colour class) so the
-// icons read as colourful rather than uniform.
+// Issue label → distinct icon colour (Tailwind text-colour class).
 export function issueColor(label: string | null | undefined): string {
   const l = (label ?? "").toLowerCase();
   if (l.includes("housing") || l.includes("homeless") || l.includes("eviction") || l.includes("shelter")) return "text-amber-600";

@@ -1,8 +1,8 @@
 # Databricks notebook source
-# Refresh the Lakebase Gold synced tables (SNAPSHOT policy → full re-copy per
-# run). Finds the managed sync pipelines by their destination name and triggers
-# an update on each, then waits for completion. A routine refresh reloads the
-# tables in place, so the app SP's read grant persists — no re-grant needed here.
+# Refresh the Lakebase Gold synced tables (SNAPSHOT → full re-copy per run).
+# Finds the sync pipelines by destination name, triggers each, and waits for
+# completion. A routine refresh reloads in place, so the app SP's read grant
+# persists — no re-grant needed here.
 import time
 from databricks.sdk import WorkspaceClient
 

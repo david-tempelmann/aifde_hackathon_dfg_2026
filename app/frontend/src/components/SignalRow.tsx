@@ -4,8 +4,7 @@ import { confidenceColor, directionStyle, formatDate } from "../lib";
 import { issueIcon, issueColor } from "../issueMeta";
 import ScoreGauge from "./ScoreGauge";
 
-// Compact-width but taller signal card used in the state swim lanes. Clicking it
-// opens the full detail drawer.
+// Compact card for the state swim lanes; clicking opens the detail drawer.
 export default function SignalRow({
   signal,
   selected = false,

@@ -134,7 +134,6 @@ function MapLayers({
   const selectedSet = useMemo(() => new Set(selectedStates), [selectedStates]);
   const selKey = useMemo(() => [...selectedStates].sort().join(","), [selectedStates]);
 
-  // Group signals by state.
   const groups = useMemo(() => {
     const m = new Map<string, Group>();
     for (const s of signals) {
@@ -152,10 +151,9 @@ function MapLayers({
   const activeKey = useMemo(() => [...activeStates].sort().join(","), [activeStates]);
   const stateColors = useMemo(() => buildStateColors([...activeStates]), [activeKey]);
 
-  // Full view (nothing selected) is locked to the whole US. When a state is
-  // selected, fit to that state's signal points — with a guard for the case
-  // where points are coincident (all fell back to one centroid), which would
-  // otherwise zoom to max on an empty spot.
+  // Nothing selected → whole-US view; a selected state fits to its signal
+  // points. Guards coincident points (all fell back to one centroid), which
+  // would otherwise zoom to max on an empty spot.
   useEffect(() => {
     const fit = () => {
       map.invalidateSize();
@@ -236,7 +234,6 @@ function MapLayers({
       <GeoJSON key={`${activeKey}|${selKey}`} data={MAINLAND_STATES} style={styleFeature} onEachFeature={onEachFeature} />
       {[...groups].flatMap(([code, g]) => {
         if (selectedSet.has(code)) {
-          // State-level view: individual dots.
           return placeSignals(g.signals).map(({ signal, pos }) => (
             <Marker
               key={signal.signal_id}
@@ -247,7 +244,7 @@ function MapLayers({
             />
           ));
         }
-        // Overview: one big numbered dot per state.
+        // Overview: one numbered cluster dot per state.
         const pos = centroidOf(g.coords) ?? stateCentroid(code);
         if (!pos) return [];
         return [

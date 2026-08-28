@@ -1,8 +1,8 @@
-# Scheduled refresh of the Lakebase Gold synced tables. The synced tables use
-# SNAPSHOT scheduling (they don't auto-run), so this job triggers all of them on
-# a schedule — intended to run shortly after the morning UC Gold rebuild. A
-# routine snapshot reloads in place, so the app SP read grant persists (only a
-# structural recreate would need grant_app_sp.sql re-run).
+# Scheduled refresh of the Lakebase Gold synced tables. They use SNAPSHOT
+# scheduling (no auto-run), so this job triggers them all — timed for shortly
+# after the morning UC Gold rebuild. A routine snapshot reloads in place, so the
+# app SP read grant persists (only a structural recreate needs grant_app_sp.sql
+# re-run).
 resources:
   jobs:
     gold_refresh:

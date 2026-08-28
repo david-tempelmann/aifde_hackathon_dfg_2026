@@ -94,7 +94,6 @@ export default function SignalsPage() {
     });
   }, [all, filters, debouncedSearch]);
 
-  // Sort client-side.
   const signals = useMemo(() => {
     const dateVal = (s: Signal) => Date.parse(s.event_date ?? s.published_date ?? "") || 0;
     const arr = [...filtered];
@@ -196,7 +195,6 @@ export default function SignalsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[19rem_minmax(0,1fr)]">
-        {/* Filters — sidebar */}
         <aside className="lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1">
           <FilterPanel
             facets={facets}
@@ -207,7 +205,6 @@ export default function SignalsPage() {
           />
         </aside>
 
-        {/* Results */}
         <div className="min-w-0 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-navy-400">
             <span>
@@ -317,7 +314,6 @@ export default function SignalsPage() {
                         ))}
                     </button>
 
-                    {/* Swim lanes: opportunity / risk / watch */}
                     <div className="grid gap-3 md:grid-cols-3 [&:has(button:hover)_button:not(:hover)]:opacity-40">
                       {LANE_KEYS.map((key) => {
                         const ls = directionStyle(key);

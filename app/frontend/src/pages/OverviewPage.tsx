@@ -18,8 +18,8 @@ export default function OverviewPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Pivot hotspot rows into { issue -> { state -> Hotspot } }, deriving the
-  // issue rows and state columns from whatever the current data contains.
+  // Pivot hotspot rows into { issue -> { state -> Hotspot } }; issue rows and
+  // state columns are derived from whatever the data contains.
   const { issues, states, matrix, max } = useMemo(() => {
     const matrix: Record<string, Record<string, Hotspot>> = {};
     const stateTotals: Record<string, number> = {};
@@ -63,7 +63,6 @@ export default function OverviewPage() {
         </p>
       </div>
 
-      {/* Stat tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Stat label="Total signals" value={s.total} icon={Activity} accent="brand" />
         <Stat label="Opportunities" value={s.opportunities} icon={TrendingUp} accent="emerald" />
@@ -72,7 +71,6 @@ export default function OverviewPage() {
         <Stat label="Latest" text={formatDate(s.latest ?? null)} icon={Clock} accent="navy" />
       </div>
 
-      {/* Hotspot matrix */}
       <div className="rounded-xl border border-black/5 bg-white p-5 shadow-sm">
         <h2 className="mb-1 text-sm font-semibold text-navy">Issue × State hotspots</h2>
         <p className="mb-4 text-xs text-navy-400">

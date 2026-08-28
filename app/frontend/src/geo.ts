@@ -1,10 +1,8 @@
 import type { Signal } from "./types";
 
-// Coordinate resolution for the map. Prefers coordinates carried on the signal
-// (once `latitude`/`longitude` are added to `dim_places` and the query), then
-// falls back to a small built-in lookup for the known Contract B places, then
-// to a state centroid. This means the map works today without any DB change and
-// upgrades automatically to DB-driven coordinates later.
+// Coordinate resolution for the map: signal lat/lng (once added to dim_places)
+// → built-in Contract B place lookup → state centroid. Works today without a DB
+// change and upgrades automatically to DB-driven coordinates later.
 
 export type LatLng = [number, number];
 
@@ -63,9 +61,8 @@ export const STATE_CODE_TO_NAME: Record<string, string> = Object.fromEntries(
   Object.entries(STATE_NAME_TO_CODE).map(([name, code]) => [code, name]),
 );
 
-// Lively, distinct per-state palette (harmonizes with the CarePortal brand),
-// shared by the map (polygon fill + cluster dot) and the list (group headers)
-// so a state reads as the same colour everywhere.
+// Per-state palette shared by the map (fill + cluster dot) and the list (group
+// headers) so a state reads as the same colour everywhere.
 export const STATE_PALETTE = [
   "#0773a7", // brand blue
   "#e8833a", // warm orange

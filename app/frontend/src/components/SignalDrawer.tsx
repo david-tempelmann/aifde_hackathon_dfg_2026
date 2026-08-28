@@ -29,7 +29,6 @@ export default function SignalDrawer({
   signal: Signal | null;
   onClose: () => void;
 }) {
-  // Close on Escape.
   useEffect(() => {
     if (!signal) return;
     const onKey = (e: KeyboardEvent) => {
@@ -53,20 +52,17 @@ export default function SignalDrawer({
 
   return (
     <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-navy/40 backdrop-blur-[1px]"
         onClick={onClose}
         aria-hidden
       />
-      {/* Panel */}
       <aside
         role="dialog"
         aria-modal="true"
         aria-label={signal.summary ?? "Signal detail"}
         className="absolute right-0 top-0 flex h-full w-full flex-col bg-canvas shadow-2xl md:w-1/2"
       >
-        {/* Header */}
         <div className={`flex items-start gap-3 border-b border-black/5 border-l-4 ${dir.accent} bg-white px-5 py-4`}>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -106,9 +102,7 @@ export default function SignalDrawer({
           </button>
         </div>
 
-        {/* Body */}
         <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-          {/* Why it matters */}
           {signal.why_go && (
             <section className="rounded-lg border-l-2 border-brand-500 bg-brand-50/70 p-3 text-sm text-navy">
               <span className="font-semibold text-brand-700">Why GO cares: </span>
@@ -116,7 +110,6 @@ export default function SignalDrawer({
             </section>
           )}
 
-          {/* Recommended action */}
           {signal.recommended_action && (
             <section className="flex items-start gap-2 rounded-lg border border-accent-100 bg-accent-50/60 p-3 text-sm text-navy">
               <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-accent-600" />
@@ -127,7 +120,6 @@ export default function SignalDrawer({
             </section>
           )}
 
-          {/* Metadata */}
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
             <Meta
               label="Issue"
@@ -162,7 +154,6 @@ export default function SignalDrawer({
             />
           </dl>
 
-          {/* Affected populations */}
           {Array.isArray(signal.affected_populations) && signal.affected_populations.length > 0 && (
             <section>
               <div className="mb-1.5 text-xs font-medium text-navy-400">Affected populations</div>
@@ -179,7 +170,6 @@ export default function SignalDrawer({
             </section>
           )}
 
-          {/* Evidence */}
           {signal.quote && (
             <section>
               <div className="mb-1.5 text-xs font-medium text-navy-400">Evidence</div>
@@ -194,7 +184,6 @@ export default function SignalDrawer({
           <OutreachStudio opportunityId={signal.signal_id} />
         </div>
 
-        {/* Footer: source link */}
         <div className="border-t border-black/5 bg-white px-5 py-3">
           {link ? (
             <a

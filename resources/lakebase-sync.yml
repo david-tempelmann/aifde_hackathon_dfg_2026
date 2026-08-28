@@ -1,11 +1,10 @@
 # Gold sync — replicate the UC gold_* Delta tables into the Lakebase `gold`
-# Postgres schema the app reads. Validated to work WITHOUT CREATE CATALOG by
-# targeting an existing UC catalog (ai_fde_hackathon_catalog) as the destination
-# (synced_table_id) rather than a new database catalog. SNAPSHOT sync: each
-# pipeline run does a full re-copy of the source table — no CDF / row tracking
-# required, and robust to the Gold job doing CREATE OR REPLACE each run. Trigger
-# a run whenever you want the app to pick up fresh Gold data. Destination table
-# names drop the `gold_` prefix so the app reads gold.opportunity_cards etc.
+# Postgres schema the app reads. Avoids needing CREATE CATALOG by targeting an
+# existing UC catalog (ai_fde_hackathon_catalog) as the synced_table_id
+# destination rather than a new database catalog. SNAPSHOT policy: each run
+# full-copies the source — no CDF / row tracking needed, and robust to the Gold
+# job's CREATE OR REPLACE. Trigger a run to pick up fresh Gold data. Destination
+# names drop the `gold_` prefix, so the app reads gold.opportunity_cards etc.
 resources:
   postgres_synced_tables:
     gold_dim_issues:

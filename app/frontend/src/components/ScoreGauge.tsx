@@ -1,5 +1,4 @@
-// Small circular progress gauge for a 0–100 score, with the number in the
-// center. Colour ramps warm as the score rises.
+// Circular gauge for a 0–100 score; colour ramps warm as the score rises.
 export default function ScoreGauge({ score, size = 34 }: { score: number; size?: number }) {
   const r = (size - 6) / 2;
   const c = 2 * Math.PI * r;

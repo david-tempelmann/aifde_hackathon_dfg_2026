@@ -133,7 +133,6 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
         )}
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-navy-400" />
         <input
@@ -146,7 +145,6 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
       </div>
 
       <div className="mt-2 divide-y divide-black/5 border-t border-black/5">
-      {/* Direction */}
       {facets.directions.length > 0 && (
         <Section title="Direction" count={filters.directions.length}>
           <div className="flex flex-wrap gap-1.5">
@@ -167,7 +165,6 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
         </Section>
       )}
 
-      {/* Confidence — buckets with visible plain-language descriptions. */}
       <Section title="Confidence" count={filters.confidence.length}>
         <div className="space-y-1">
           {CONFIDENCE_BUCKETS.map((b) => {
@@ -195,7 +192,6 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
         </div>
       </Section>
 
-      {/* State */}
       {facets.states.length > 0 && (
         <Section title="State" count={filters.states.length}>
           <div className="flex flex-wrap gap-1.5">
@@ -212,7 +208,6 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
         </Section>
       )}
 
-      {/* Issue */}
       {facets.issues.length > 0 && (
         <Section title="Issue" count={filters.issues.length} defaultOpen={false}>
           <div className="flex flex-wrap gap-1.5">
@@ -233,7 +228,6 @@ export default function FilterPanel({ facets, filters, onToggle, onSearch, onRes
         </Section>
       )}
 
-      {/* Signal type */}
       {facets.types.length > 0 && (
         <Section title="Type" count={filters.types.length} defaultOpen={false}>
           <div className="flex flex-wrap gap-1.5">
