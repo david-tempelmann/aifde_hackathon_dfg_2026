@@ -38,6 +38,10 @@ SERVING_ENDPOINT: str = os.environ.get("SERVING_ENDPOINT", "databricks-claude-so
 # SQL warehouse used for AI SQL functions (ai_translate) — Databricks SQL only.
 WAREHOUSE_ID: str = os.environ.get("DATABRICKS_WAREHOUSE_ID", "41659c95dacd3bf0")
 
+# Genie space backing the Topic Deep-Dive page (certified findings query).
+# Repo-owned space defined in genie/outreach_topic_agent.json (deploy_space.py).
+GENIE_SPACE_ID: str = os.environ.get("GENIE_SPACE_ID", "01f1a2e161fa111791babad65ae8955d")
+
 
 @functools.lru_cache(maxsize=1)
 def get_workspace_client() -> WorkspaceClient:
